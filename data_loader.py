@@ -22,6 +22,11 @@ def raw_data_loader(args):
     if args.test_file is not None:
         data_files["test"] = args.test_file
 
+    if args.run_test:
+        args.train_file = "./data/dialogtest/dialogsum.train.jsonl"
+        args.validation_file = "./data/dialogtest/dialogsum.dev.jsonl"
+        args.test_file = "./data/dialogtest/dialogsum.test.jsonl"
+
     if "samsum" in args.train_file:
         train_dict = load_from_samsum(args, args.train_file)
         val_dict = load_from_samsum(args, args.validation_file)
@@ -35,11 +40,6 @@ def raw_data_loader(args):
     train_dict = utils.len_adjust(args, train_dict, "train")
     val_dict = utils.len_adjust(args, val_dict, "val")
     test_dict = utils.len_adjust(args, test_dict, "test")
-
-    if args.run_test == True:
-        train_dict = RandomSampler(train_dict, num_samples=1264)
-        val_dict = RandomSampler(val_dict, num_samples=50)
-        test_dict = RandomSampler(test_dict, num_samples=150)
 
     raw_datasets = datasets.DatasetDict(
         {"train": train_dict, "validation": val_dict, "test": test_dict}
