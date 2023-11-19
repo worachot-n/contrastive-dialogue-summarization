@@ -8,7 +8,7 @@ echo "= = = = = = = = = = = = = ="
 python train.py \
     --len_input 'topic-length' \
     --len_output 'no' \
-    --output_dir ./output/4 \
+    --output_dir ./output/5 \
     --train_file ./data/dialogsum/dialogsum.train.jsonl \
     --validation_file ./data/dialogsum/dialogsum.dev.jsonl \
     --test_file ./data/dialogsum/dialogsum.test.jsonl \
@@ -24,7 +24,7 @@ python train.py \
     --weight_decay 1e-3 \
     --label_smoothing 0.1 \
     --length_penalty 1.0 \
-    --num_train_epochs 15 \
+    --num_train_epochs 1 \
     --per_device_train_batch_size 4 \
     --gradient_accumulation_steps 32 \
     --per_device_eval_batch_size 8 \
@@ -32,7 +32,9 @@ python train.py \
     --num_warmup_steps 0 \
     --cache_dir ./output/cache \
     --overwrite_cache True \
-    --seed 12345
+    --seed 12345 \
+    --contrastive 'random' \
+    --run_test
 
 echo "= = = = = = = = = = = = = ="
 echo "The project is Finished..."

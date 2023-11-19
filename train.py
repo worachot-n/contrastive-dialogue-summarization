@@ -173,7 +173,8 @@ def main():
                 ]
             )
         else:
-            raise ValueError("{} model type not implemented".format(args.model_type))
+            raise ValueError(
+                "{} model type not implemented".format(args.model_type))
 
     # optimizer
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
@@ -221,7 +222,8 @@ def main():
     logger.info(
         f" Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}"
     )
-    logger.info(f" Gradient Accumulation steps = {args.gradient_accumulation_steps}")
+    logger.info(
+        f" Gradient Accumulation steps = {args.gradient_accumulation_steps}")
     logger.info(f" Total optimization steps = {args.max_train_steps}")
 
     # Only show the progress bar once on each machine.
@@ -246,7 +248,8 @@ def main():
         params["num_beams"] = args.num_beams
         model.config.update(params)
     else:
-        raise ValueError("{} model type not implemented".format(args.model_type))
+        raise ValueError(
+            "{} model type not implemented".format(args.model_type))
 
     # =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  = Train =  =  =  =  =  =  =  =  =  =  =  =  =  =  =
     for epoch in range(args.num_train_epochs):
@@ -267,22 +270,24 @@ def main():
                         output_logits, dim=-1
                     )
 
-                    if args.contrastive == "combine":
+                    if args.contrastive != "no":
                         max_encoder_token = model.config.max_position_embeddings
                         embeddings = outputs.encoder_last_hidden_state[
                             : args.per_device_train_batch_size, :, :max_encoder_token
                         ]
                         embeddings = embeddings.reshape(-1, max_encoder_token)
 
-                        minus_one = -torch.ones(embeddings.size(dim=0)).to(device)
+                        minus_one = - \
+                            torch.ones(embeddings.size(dim=0)).to(device)
 
-                        if args.len_input == "combine":
+                        if args.contrastive == "combine":
                             embeddings = torch.cat((embeddings, embeddings), 0)
 
                         pair_embeddings = outputs.encoder_last_hidden_state[
-                            args.per_device_train_batch_size :, :, :max_encoder_token
+                            args.per_device_train_batch_size:, :, :max_encoder_token
                         ]
-                        pair_embeddings = pair_embeddings.reshape(-1, max_encoder_token)
+                        pair_embeddings = pair_embeddings.reshape(
+                            -1, max_encoder_token)
                         loss_cs = cosine_embedding_loss(
                             embeddings, pair_embeddings, minus_one, args.margin
                         )
@@ -290,7 +295,8 @@ def main():
                         output_probs = output_probs[
                             : args.per_device_train_batch_size, :, :
                         ]
-                        output_probs = output_probs.view(-1, model.config.vocab_size)
+                        output_probs = output_probs.view(-1,
+                                                         model.config.vocab_size)
                         gt_logits = batch["labels"][
                             : args.per_device_train_batch_size, :
                         ]
@@ -305,7 +311,8 @@ def main():
                         loss = loss_nll + (args.alpha * loss_cs)
 
                     else:
-                        output_probs = output_probs.view(-1, model.config.vocab_size)
+                        output_probs = output_probs.view(-1,
+                                                         model.config.vocab_size)
 
                         gt_logits = batch["labels"]
                         gt_logits = gt_logits.view(-1)
@@ -330,7 +337,8 @@ def main():
                 optimizer.zero_grad()
                 progress_bar.update(1)
                 progress_bar.set_postfix(
-                    lr=lr_scheduler.get_last_lr()[0], loss=np.mean(acc_losses[-50:])
+                    lr=lr_scheduler.get_last_lr()[0], loss=np.mean(
+                        acc_losses[-50:])
                 )
                 completed_steps += 1
 
@@ -357,12 +365,14 @@ def main():
                         batch["labels"], dim=1, pad_index=tokenizer.pad_token_id
                     )
 
-                generated_tokens = accelerator.gather(generated_tokens).cpu().numpy()
+                generated_tokens = accelerator.gather(
+                    generated_tokens).cpu().numpy()
                 labels = accelerator.gather(labels).cpu().numpy()
 
                 if args.ignore_pad_token_for_loss:
                     # Replace -100 in the labels as we can't decode them.
-                    labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
+                    labels = np.where(labels != -100, labels,
+                                      tokenizer.pad_token_id)
                 if isinstance(generated_tokens, tuple):
                     generated_tokens = generated_tokens[0]
 
@@ -413,7 +423,8 @@ def main():
 
             # save vocab
             vocab = tokenizer.vocab.copy()
-            vocab = {k: v for k, v in sorted(vocab.items(), key=lambda item: item[1])}
+            vocab = {k: v for k, v in sorted(
+                vocab.items(), key=lambda item: item[1])}
             with open(args.output_dir + "/best/vocab.txt", "w") as f:
                 for word, index in vocab.items():
                     # it lead to encoding bug on some machines, so i add this line
@@ -421,16 +432,19 @@ def main():
                     f.write(str(index) + ": " + word + "\n")
 
         # = = = = = = = = = = = = = = = = = = = = = = = = =
-        logger.info("Current Best Validation Result is at epoch {}".format(best_epoch))
+        logger.info(
+            "Current Best Validation Result is at epoch {}".format(best_epoch))
         py_rouge_scores(None, None, best_r2_f1)
 
     # =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  = Test =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =
     # load best model
-    logger.info("Loading Best Result is at epoch {} for Testing".format(best_epoch))
+    logger.info(
+        "Loading Best Result is at epoch {} for Testing".format(best_epoch))
 
     unwrapped_model = accelerator.unwrap_model(model)
     config = config.from_pretrained(args.output_dir + "/best")
-    tokenizer = tokenizer.from_pretrained(args.output_dir + "/best", config=config)
+    tokenizer = tokenizer.from_pretrained(
+        args.output_dir + "/best", config=config)
     unwrapped_model = unwrapped_model.from_pretrained(
         args.output_dir + "/best", config=config
     )
@@ -445,7 +459,8 @@ def main():
         params["num_beams"] = args.num_beams
         model.config.update(params)
     else:
-        raise ValueError("{} model type not implemented".format(args.model_type))
+        raise ValueError(
+            "{} model type not implemented".format(args.model_type))
 
     # start Test
     logger.info("Collecting Testing Result...")
@@ -471,26 +486,31 @@ def main():
                     batch["labels"], dim=1, pad_index=tokenizer.pad_token_id
                 )
 
-            generated_tokens = accelerator.gather(generated_tokens).cpu().numpy()
+            generated_tokens = accelerator.gather(
+                generated_tokens).cpu().numpy()
             labels = accelerator.gather(labels).cpu().numpy()
 
             if args.ignore_pad_token_for_loss:
                 # Replace -100 in the labels as we can't decode them.
-                labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
+                labels = np.where(labels != -100, labels,
+                                  tokenizer.pad_token_id)
             if isinstance(generated_tokens, tuple):
                 generated_tokens = generated_tokens[0]
 
             decoded_preds = tokenizer.batch_decode(
                 generated_tokens, skip_special_tokens=True
             )
-            decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+            decoded_labels = tokenizer.batch_decode(
+                labels, skip_special_tokens=True)
 
             decoded_preds, decoded_labels = postprocess_text(
                 decoded_preds, decoded_labels
             )
 
-            decoded_preds = [" ".join(sent.split("\n")) for sent in decoded_preds]
-            decoded_labels = [" ".join(sent.split("\n")) for sent in decoded_labels]
+            decoded_preds = [" ".join(sent.split("\n"))
+                             for sent in decoded_preds]
+            decoded_labels = [" ".join(sent.split("\n"))
+                              for sent in decoded_labels]
 
             test_predict.extend(decoded_preds)
             test_groundtruth.extend(decoded_labels)
@@ -526,13 +546,16 @@ def main():
 
         if args.len_input == "predict":
             with open(
-                args.output_dir + "/predict_gen_samples/" + str(test_id) + ".txt", "w"
+                args.output_dir + "/predict_gen_samples/" +
+                    str(test_id) + ".txt", "w"
             ) as f:
-                test_dialogue = test_dialogue.encode("ascii", "ignore").decode("ascii")
+                test_dialogue = test_dialogue.encode(
+                    "ascii", "ignore").decode("ascii")
                 f.write(test_dialogue)
                 f.write("\n\n")
                 f.write("Golden Summary:\n")
-                test_summary = test_summary.encode("ascii", "ignore").decode("ascii")
+                test_summary = test_summary.encode(
+                    "ascii", "ignore").decode("ascii")
                 f.write(test_summary)
                 f.write("\n\n")
                 f.write("Generate Summary:\n")
@@ -544,11 +567,13 @@ def main():
             with open(
                 args.output_dir + "/gen_samples/" + str(test_id) + ".txt", "w"
             ) as f:
-                test_dialogue = test_dialogue.encode("ascii", "ignore").decode("ascii")
+                test_dialogue = test_dialogue.encode(
+                    "ascii", "ignore").decode("ascii")
                 f.write(test_dialogue)
                 f.write("\n\n")
                 f.write("Golden Summary:\n")
-                test_summary = test_summary.encode("ascii", "ignore").decode("ascii")
+                test_summary = test_summary.encode(
+                    "ascii", "ignore").decode("ascii")
                 f.write(test_summary)
                 f.write("\n\n")
                 f.write("Generate Summary:\n")

@@ -33,7 +33,6 @@ python train.py \
     --cache_dir ./output/cache \
     --overwrite_cache True \
     --seed 12345 \
-    --run_test
 
 echo "= = = = = = = = = = = = = ="
 echo "The project is Finished..."
