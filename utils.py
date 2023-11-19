@@ -9,6 +9,7 @@ from nltk.util import ngrams
 from nltk import word_tokenize, sent_tokenize
 
 from datasets import Dataset
+import torch.nn as nn
 
 
 def label_smoothed_nll_loss(lprobs, target, epsilon, ignore_index=-100):
@@ -56,6 +57,10 @@ def len_adjust(args, split_dict, split_type=None):
     dialogue_list = split_dict["dialogue"]
     summary_list = split_dict["summary"]
     topic_list = split_dict["topic"]
+    if args.contrastive == "synonym" or args.contrastive == "combine":
+        synonym_list = split_dict["synonym_topic"]
+    if args.contrastive == "random" or args.contrastive == "combine":
+        random_list = split_dict["random_topic"]
 
     if args.len_input == "no":
         new_dialogue_list = dialogue_list
@@ -68,7 +73,7 @@ def len_adjust(args, split_dict, split_type=None):
 
     elif args.len_input == "length":
         new_dialogue_list = []
-        for dialogue, topic, summary in zip(dialogue_list, summary_list):
+        for dialogue, summary in zip(dialogue_list, summary_list):
             sum_len = len(summary.split(" "))
             new_dialogue = (
                 "Length of Summary: {}. Dialogue: ".format(sum_len) + dialogue
@@ -79,13 +84,84 @@ def len_adjust(args, split_dict, split_type=None):
         new_dialogue_list = []
         for dialogue, topic, summary in zip(dialogue_list, topic_list, summary_list):
             sum_len = len(summary.split(" "))
+            if args.tagging == "word":
+                new_dialogue = (
+                    "Topic of Summary: <t>{}</t>. Length of Summary: {}. Dialogue: ".format(
+                        topic, sum_len
+                    )
+                    + dialogue
+                )
+            elif args.tagging == "prompt":
+                new_dialogue = (
+                    "<t>Topic of Summary: {}</t>. Length of Summary: {}. Dialogue: ".format(
+                        topic, sum_len
+                    )
+                    + dialogue
+                )
+            else:
+                new_dialogue = (
+                    "Topic of Summary: {}. Length of Summary: {}. Dialogue: ".format(
+                        topic, sum_len
+                    )
+                    + dialogue
+                )
+            new_dialogue_list.append(new_dialogue)
+
+    if args.contrastive == "synonym" or args.contrastive == "combine":
+        new_synonym_list = []
+        for dialogue, synonym, summary in zip(
+            dialogue_list, synonym_list, summary_list
+        ):
+            sum_len = len(summary.split(" "))
+            # if args.tagging == "word":
+            #     new_dialogue = (
+            #         "Topic of Summary: <t>{}</t>. Length of Summary: {}. Dialogue: ".format(
+            #             synonym, sum_len
+            #         )
+            #         + dialogue
+            #     )
+            # elif args.tagging == "prompt":
+            #     new_dialogue = (
+            #         "<t>Topic of Summary: {}</t>. Length of Summary: {}. Dialogue: ".format(
+            #             synonym, sum_len
+            #         )
+            #         + dialogue
+            #     )
+            # else:
             new_dialogue = (
                 "Topic of Summary: {}. Length of Summary: {}. Dialogue: ".format(
-                    topic, sum_len
+                    synonym, sum_len
                 )
                 + dialogue
             )
-            new_dialogue_list.append(new_dialogue)
+            new_synonym_list.append(new_dialogue)
+
+    if args.contrastive == "random" or args.contrastive == "combine":
+        new_random_list = []
+        for dialogue, random, summary in zip(dialogue_list, random_list, summary_list):
+            sum_len = len(summary.split(" "))
+            # if args.tagging == "word":
+            #     new_dialogue = (
+            #         "Topic of Summary: <t>{}</t>. Length of Summary: {}. Dialogue: ".format(
+            #             random, sum_len
+            #         )
+            #         + dialogue
+            #     )
+            # elif args.tagging == "prompt":
+            #     new_dialogue = (
+            #         "<t>Topic of Summary: {}</t>. Length of Summary: {}. Dialogue: ".format(
+            #             random, sum_len
+            #         )
+            #         + dialogue
+            #     )
+            # else:
+            new_dialogue = (
+                "Topic of Summary: {}. Length of Summary: {}. Dialogue: ".format(
+                    random, sum_len
+                )
+                + dialogue
+            )
+            new_random_list.append(new_dialogue)
 
     # elif args.len_input == 'surface':
     #     new_dialogue_list = []
@@ -138,6 +214,17 @@ def len_adjust(args, split_dict, split_type=None):
         "summary": new_summary_list,
     }
 
+    if args.contrastive == "synonym" or args.contrastive == "combine":
+        split_dict["synonym_dialogue"] = new_synonym_list
+    if args.contrastive == "random" or args.contrastive == "combine":
+        split_dict["random_dialogue"] = new_random_list
+
     split_dict = Dataset.from_dict(split_dict)
 
     return split_dict
+
+
+def cosine_embedding_loss(pos, neg, contrastive, margin=0.5):
+    cs_loss = nn.CosineEmbeddingLoss(margin)
+    loss_cosine_embedding = cs_loss(pos, neg, contrastive)
+    return loss_cosine_embedding

@@ -6,9 +6,22 @@ import datasets
 from datasets import Dataset
 from torch.utils.data import DataLoader, RandomSampler
 
+import nltk
+from nltk.corpus import wordnet
+
 from transformers import DataCollatorForSeq2Seq
 
 import utils
+from special_token import simple_tokenize, lemmatize_text, build_tagger
+from custom_dataloader import CustomWithNegativeDataCollator
+
+
+def get_synonyms(word):
+    synonyms = []
+    for syn in wordnet.synsets(word):
+        for lemma in syn.lemmas():
+            synonyms.append(lemma.name())
+    return synonyms
 
 
 def raw_data_loader(args):
@@ -61,8 +74,7 @@ def load_from_samsum(args, file_path):
             dialogue_list.append(row["dialogue"])
             summary_list.append(row["summary"])
 
-    data_dict = {"id": id_list, "dialogue": dialogue_list,
-                 "summary": summary_list}
+    data_dict = {"id": id_list, "dialogue": dialogue_list, "summary": summary_list}
 
     data_dict = Dataset.from_dict(data_dict)
 
@@ -112,6 +124,53 @@ def load_from_dialogsum(args, file_path):
         "topic": topic_list,
     }
 
+    if args.contrastive != "no":
+        topic_set = set(topic_list)
+        synonym_topic_list = []
+        random_topic_list = []
+        for topic in topic_list:
+            tokenized_text = nltk.word_tokenize(topic)
+            # synonym
+            if args.contrastive == "synonym" or args.contrastive == "combine":
+                synonym_topic = []
+                for word in tokenized_text:
+                    if word not in {"a", "an", "the"}:
+                        synonyms = get_synonyms(word)
+                        synonyms_not_duplicate = set(synonyms).difference(set([word]))
+                        if len(synonyms_not_duplicate):
+                            synonyms_not_duplicate_list = list(synonyms_not_duplicate)
+                            synonyms_not_duplicate_list.sort()
+                            synonyms_not_duplicate = random.choice(
+                                synonyms_not_duplicate_list
+                            )
+                        else:
+                            synonyms_not_duplicate = word
+                        synonym_topic.append(synonyms_not_duplicate)
+                    else:
+                        synonym_topic.append(word)
+                synonym_topic_list.append(" ".join(synonym_topic))
+            # random
+            if args.contrastive == "random" or args.contrastive == "combine":
+                new_topic_set = topic_set.difference(set(topic))
+                new_topic_list = list(new_topic_set)
+                new_topic_list.sort()
+                random_topic = random.choice(new_topic_list)
+                random_topic_list.append(random_topic)
+
+    if args.contrastive == "synonym" or args.contrastive == "combine":
+        data_dict["synonym_topic"] = synonym_topic_list
+    if args.contrastive == "random" or args.contrastive == "combine":
+        data_dict["random_topic"] = random_topic_list
+
+    if args.tagging != "no":
+        original_tagger = []
+        original_tokens = [simple_tokenize(x) for x in dialogue_list]
+        lemmatized_tokens = [lemmatize_text(x) for x in dialogue_list]
+        for i in range(len(lemmatized_tokens)):
+            tagger = build_tagger(original_tokens, lemmatized_tokens, topic_list[i], i)
+            original_tagger.extend(tagger)
+        data_dict["dialogue"] = original_tagger
+
     data_dict = Dataset.from_dict(data_dict)
 
     return data_dict
@@ -138,8 +197,7 @@ def data_processor(logger, args, accelerator, raw_datasets, tokenizer, model):
             if args.ctrlen_model:
                 if "pred_len" in examples:
                     new_inputs.append(
-                        prefix +
-                        "<len_{}> ".format(examples["pred_len"][i]) + inp
+                        prefix + "<len_{}> ".format(examples["pred_len"][i]) + inp
                     )
 
                 else:
@@ -153,6 +211,25 @@ def data_processor(logger, args, accelerator, raw_datasets, tokenizer, model):
         model_inputs = tokenizer(
             inputs, max_length=args.max_source_length, padding=padding, truncation=True
         )
+
+        if args.contrastive == "synonym" or args.contrastive == "combine":
+            synonym_inputs = examples["synonym_dialogue"]
+            synonym_model_inputs = tokenizer(
+                synonym_inputs,
+                max_length=args.max_source_length,
+                padding=padding,
+                truncation=True,
+            )
+            model_inputs["synonym_inputs"] = synonym_model_inputs["input_ids"]
+        if args.contrastive == "random" or args.contrastive == "combine":
+            random_inputs = examples["random_dialogue"]
+            random_model_inputs = tokenizer(
+                random_inputs,
+                max_length=args.max_source_length,
+                padding=padding,
+                truncation=True,
+            )
+            model_inputs["random_inputs"] = random_model_inputs["input_ids"]
 
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
         # padding in the loss.
@@ -208,35 +285,80 @@ def data_processor(logger, args, accelerator, raw_datasets, tokenizer, model):
 
     # Log a few random samples from the training set:
     for index in random.sample(range(len(train_dataset)), 1):
-        logger.info(
-            f"Sample {index} of the training set: {train_dataset[index]}.")
+        logger.info(f"Sample {index} of the training set: {train_dataset[index]}.")
 
     label_pad_token_id = (
         -100 if args.ignore_pad_token_for_loss else tokenizer.pad_token_id
     )
-    data_collator = DataCollatorForSeq2Seq(
-        tokenizer,
-        model=model,
-        label_pad_token_id=label_pad_token_id,
-        pad_to_multiple_of=8 if accelerator.use_fp16 else None,
-    )
 
-    train_dataloader = DataLoader(
-        train_dataset,
-        shuffle=True,
-        collate_fn=data_collator,
-        batch_size=args.per_device_train_batch_size,
-    )
-    eval_dataloader = DataLoader(
-        eval_dataset,
-        collate_fn=data_collator,
-        batch_size=args.per_device_eval_batch_size,
-    )
-    test_dataloader = DataLoader(
-        test_dataset,
-        collate_fn=data_collator,
-        batch_size=args.per_device_test_batch_size,
-    )
+    if args.contrastive != "no":
+        if args.contrastive == "combine":
+            eval_dataset = eval_dataset.remove_columns(
+                ["synonym_inputs", "random_inputs"]
+            )
+            test_dataset = test_dataset.remove_columns(
+                ["synonym_inputs", "random_inputs"]
+            )
+        elif args.contrastive == "synonym":
+            eval_dataset = eval_dataset.remove_columns(["synonym_inputs"])
+            test_dataset = test_dataset.remove_columns(["synonym_inputs"])
+        elif args.contrastive == "random":
+            eval_dataset = eval_dataset.remove_columns(["random_inputs"])
+            test_dataset = test_dataset.remove_columns(["random_inputs"])
+
+        data_collator = CustomWithNegativeDataCollator(
+            tokenizer,
+            model=model,
+            label_pad_token_id=label_pad_token_id,
+            pad_to_multiple_of=8 if accelerator.use_fp16 else None,
+        )
+
+        valid_data_collator = DataCollatorForSeq2Seq(
+            tokenizer,
+            model=model,
+            label_pad_token_id=label_pad_token_id,
+            pad_to_multiple_of=8 if accelerator.use_fp16 else None,
+        )
+        train_dataloader = DataLoader(
+            train_dataset,
+            shuffle=True,
+            collate_fn=data_collator,
+            batch_size=args.per_device_train_batch_size,
+        )
+        eval_dataloader = DataLoader(
+            eval_dataset,
+            collate_fn=valid_data_collator,
+            batch_size=args.per_device_eval_batch_size,
+        )
+        test_dataloader = DataLoader(
+            test_dataset,
+            collate_fn=valid_data_collator,
+            batch_size=args.per_device_test_batch_size,
+        )
+    else:
+        data_collator = DataCollatorForSeq2Seq(
+            tokenizer,
+            model=model,
+            label_pad_token_id=label_pad_token_id,
+            pad_to_multiple_of=8 if accelerator.use_fp16 else None,
+        )
+
+        train_dataloader = DataLoader(
+            train_dataset,
+            shuffle=True,
+            collate_fn=data_collator,
+            batch_size=args.per_device_train_batch_size,
+        )
+        eval_dataloader = DataLoader(
+            eval_dataset,
+            collate_fn=data_collator,
+            batch_size=args.per_device_eval_batch_size,
+        )
+        test_dataloader = DataLoader(
+            test_dataset,
+            collate_fn=data_collator,
+            batch_size=args.per_device_test_batch_size,
+        )
 
     return (train_dataloader, eval_dataloader, test_dataloader), (
         train_dataset,

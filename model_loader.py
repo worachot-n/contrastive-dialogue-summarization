@@ -44,6 +44,10 @@ def model_loader(accelerator, logger, args):
             "You can do it from another script, save it, and load it from here, using --tokenizer_name."
         )
 
+    if args.tagging == "word" or args.tagging == "prompt":
+        special_tokens = {"additional_special_tokens": ["<t>", "</t>"]}
+        tokenizer.add_special_tokens(special_tokens_dict=special_tokens)
+
     ori_tokenizer_len = len(tokenizer)
 
     model = AutoModelForSeq2SeqLM.from_pretrained(

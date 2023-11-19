@@ -223,25 +223,19 @@ def parse_args():
     parser.add_argument(
         "--len_input",
         type=str,
-        default=None,
+        default="no",
         help="Use the ctrlen model or not",
         choices=(
             "no",
-            "real",
-            "predict",
-            "surface",
             "topic",
             "length",
             "topic-length",
-            "synonym",
-            "random",
-            "combine",
         ),
     )
     parser.add_argument(
         "--len_output",
         type=str,
-        default=None,
+        default="no",
         help="Use the ctrlen model or not",
         choices=("no", "real"),
     )
@@ -307,6 +301,41 @@ def parse_args():
         type=float,
         default=0.0,
         help="hyperparameter for label smoothing.",
+    )
+    parser.add_argument(
+        "--contrastive",
+        type=str,
+        default="no",
+        help="Use contrastive or not",
+        choices=(
+            "no",
+            "synonym",
+            "random",
+            "combine",
+        ),
+    )
+    parser.add_argument(
+        "--tagging",
+        type=str,
+        default="no",
+        help="Use tagging or not",
+        choices=(
+            "no",
+            "word",
+            "prompt",
+        ),
+    )
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=0.5,
+        help="Initial alpha",
+    )
+    parser.add_argument(
+        "--margin",
+        type=float,
+        default=0.5,
+        help="Initial margin",
     )
     parser.add_argument(
         "--run_test",
