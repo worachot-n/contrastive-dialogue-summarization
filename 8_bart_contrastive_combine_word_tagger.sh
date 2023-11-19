@@ -6,9 +6,9 @@ start=`date +%s`
 echo "= = = = = = = = = = = = = ="
 
 python train.py \
-    --len_input 'no' \
+    --len_input 'topic-length' \
     --len_output 'no' \
-    --output_dir ./output/1 \
+    --output_dir ./output/8 \
     --train_file ./data/dialogsum/dialogsum.train.jsonl \
     --validation_file ./data/dialogsum/dialogsum.dev.jsonl \
     --test_file ./data/dialogsum/dialogsum.test.jsonl \
@@ -33,6 +33,8 @@ python train.py \
     --cache_dir ./output/cache \
     --overwrite_cache True \
     --seed 12345 \
+    --contrastive 'combine' \
+    --tagging 'word' \
 
 echo "= = = = = = = = = = = = = ="
 echo "The project is Finished..."

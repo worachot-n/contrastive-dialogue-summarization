@@ -68,7 +68,8 @@ def len_adjust(args, split_dict, split_type=None):
     elif args.len_input == "topic":
         new_dialogue_list = []
         for dialogue, topic in zip(dialogue_list, topic_list):
-            new_dialogue = "Topic of Summary: {}. Dialogue: ".format(topic) + dialogue
+            new_dialogue = "Topic of Summary: {}. Dialogue: ".format(
+                topic) + dialogue
             new_dialogue_list.append(new_dialogue)
 
     elif args.len_input == "length":
@@ -113,54 +114,54 @@ def len_adjust(args, split_dict, split_type=None):
             dialogue_list, synonym_list, summary_list
         ):
             sum_len = len(summary.split(" "))
-            # if args.tagging == "word":
-            #     new_dialogue = (
-            #         "Topic of Summary: <t>{}</t>. Length of Summary: {}. Dialogue: ".format(
-            #             synonym, sum_len
-            #         )
-            #         + dialogue
-            #     )
-            # elif args.tagging == "prompt":
-            #     new_dialogue = (
-            #         "<t>Topic of Summary: {}</t>. Length of Summary: {}. Dialogue: ".format(
-            #             synonym, sum_len
-            #         )
-            #         + dialogue
-            #     )
-            # else:
-            new_dialogue = (
-                "Topic of Summary: {}. Length of Summary: {}. Dialogue: ".format(
-                    synonym, sum_len
+            if args.tagging == "word":
+                new_dialogue = (
+                    "Topic of Summary: <t>{}</t>. Length of Summary: {}. Dialogue: ".format(
+                        synonym, sum_len
+                    )
+                    + dialogue
                 )
-                + dialogue
-            )
+            elif args.tagging == "prompt":
+                new_dialogue = (
+                    "<t>Topic of Summary: {}</t>. Length of Summary: {}. Dialogue: ".format(
+                        synonym, sum_len
+                    )
+                    + dialogue
+                )
+            else:
+                new_dialogue = (
+                    "Topic of Summary: {}. Length of Summary: {}. Dialogue: ".format(
+                        synonym, sum_len
+                    )
+                    + dialogue
+                )
             new_synonym_list.append(new_dialogue)
 
     if args.contrastive == "random" or args.contrastive == "combine":
         new_random_list = []
         for dialogue, random, summary in zip(dialogue_list, random_list, summary_list):
             sum_len = len(summary.split(" "))
-            # if args.tagging == "word":
-            #     new_dialogue = (
-            #         "Topic of Summary: <t>{}</t>. Length of Summary: {}. Dialogue: ".format(
-            #             random, sum_len
-            #         )
-            #         + dialogue
-            #     )
-            # elif args.tagging == "prompt":
-            #     new_dialogue = (
-            #         "<t>Topic of Summary: {}</t>. Length of Summary: {}. Dialogue: ".format(
-            #             random, sum_len
-            #         )
-            #         + dialogue
-            #     )
-            # else:
-            new_dialogue = (
-                "Topic of Summary: {}. Length of Summary: {}. Dialogue: ".format(
-                    random, sum_len
+            if args.tagging == "word":
+                new_dialogue = (
+                    "Topic of Summary: <t>{}</t>. Length of Summary: {}. Dialogue: ".format(
+                        random, sum_len
+                    )
+                    + dialogue
                 )
-                + dialogue
-            )
+            elif args.tagging == "prompt":
+                new_dialogue = (
+                    "<t>Topic of Summary: {}</t>. Length of Summary: {}. Dialogue: ".format(
+                        random, sum_len
+                    )
+                    + dialogue
+                )
+            else:
+                new_dialogue = (
+                    "Topic of Summary: {}. Length of Summary: {}. Dialogue: ".format(
+                        random, sum_len
+                    )
+                    + dialogue
+                )
             new_random_list.append(new_dialogue)
 
     # elif args.len_input == 'surface':

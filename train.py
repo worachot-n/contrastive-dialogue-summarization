@@ -282,6 +282,7 @@ def main():
 
                         if args.contrastive == "combine":
                             embeddings = torch.cat((embeddings, embeddings), 0)
+                            minus_one = torch.cat((minus_one, minus_one), 0)
 
                         pair_embeddings = outputs.encoder_last_hidden_state[
                             args.per_device_train_batch_size:, :, :max_encoder_token
