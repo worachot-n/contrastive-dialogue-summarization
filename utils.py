@@ -61,6 +61,11 @@ def len_adjust(args, split_dict, split_type=None):
         synonym_list = split_dict["synonym_topic"]
     if args.contrastive == "random" or args.contrastive == "combine":
         random_list = split_dict["random_topic"]
+    if args.tagging != "no":
+        if args.contrastive == "synonym" or args.contrastive == "combine":
+            dialogue_synonym_list = split_dict["synonym_dialogue"]
+        if args.contrastive == "random" or args.contrastive == "combine":
+            dialogue_random_list = split_dict["random_dialogue"]
 
     if args.len_input == "no":
         new_dialogue_list = dialogue_list
@@ -68,8 +73,7 @@ def len_adjust(args, split_dict, split_type=None):
     elif args.len_input == "topic":
         new_dialogue_list = []
         for dialogue, topic in zip(dialogue_list, topic_list):
-            new_dialogue = "Topic of Summary: {}. Dialogue: ".format(
-                topic) + dialogue
+            new_dialogue = "Topic of Summary: {}. Dialogue: ".format(topic) + dialogue
             new_dialogue_list.append(new_dialogue)
 
     elif args.len_input == "length":
@@ -109,6 +113,8 @@ def len_adjust(args, split_dict, split_type=None):
             new_dialogue_list.append(new_dialogue)
 
     if args.contrastive == "synonym" or args.contrastive == "combine":
+        if args.tagging != "no":
+            dialogue_list = dialogue_synonym_list
         new_synonym_list = []
         for dialogue, synonym, summary in zip(
             dialogue_list, synonym_list, summary_list
@@ -138,6 +144,8 @@ def len_adjust(args, split_dict, split_type=None):
             new_synonym_list.append(new_dialogue)
 
     if args.contrastive == "random" or args.contrastive == "combine":
+        if args.tagging != "no":
+            dialogue_list = dialogue_random_list
         new_random_list = []
         for dialogue, random, summary in zip(dialogue_list, random_list, summary_list):
             sum_len = len(summary.split(" "))

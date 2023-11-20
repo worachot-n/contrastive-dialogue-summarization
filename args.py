@@ -353,8 +353,7 @@ def parse_args():
 
     # Sanity checks
     if args.train_file is None and args.validation_file is None:
-        raise ValueError(
-            "Need either a dataset name or a training/validation file.")
+        raise ValueError("Need either a dataset name or a training/validation file.")
     else:
         if args.train_file is not None:
             extension = args.train_file.split(".")[-1]
