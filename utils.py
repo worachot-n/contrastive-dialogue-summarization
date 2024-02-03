@@ -74,6 +74,27 @@ def len_adjust(args, split_dict, split_type=None):
         new_dialogue_list = []
         for dialogue, topic in zip(dialogue_list, topic_list):
             new_dialogue = "Topic of Summary: {}. Dialogue: ".format(topic) + dialogue
+            if args.tagging == "word":
+                new_dialogue = (
+                    "Topic of Summary: <t>{}</t>. Dialogue: ".format(
+                        topic
+                    )
+                    + dialogue
+                )
+            elif args.tagging == "prompt":
+                new_dialogue = (
+                    "<t>Topic of Summary: {}</t>. Dialogue: ".format(
+                        topic
+                    )
+                    + dialogue
+                )
+            else:
+                new_dialogue = (
+                    "Topic of Summary: {}. Dialogue: ".format(
+                        topic
+                    )
+                    + dialogue
+                )
             new_dialogue_list.append(new_dialogue)
 
     elif args.len_input == "length":

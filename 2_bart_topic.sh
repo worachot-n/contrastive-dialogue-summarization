@@ -5,7 +5,7 @@ echo $currentDate
 start=`date +%s`
 echo "= = = = = = = = = = = = = ="
 
-python train.py \
+python3 train.py \
     --len_input 'topic' \
     --len_output 'no' \
     --output_dir ./output/2 \
@@ -33,6 +33,7 @@ python train.py \
     --cache_dir ./output/cache \
     --overwrite_cache True \
     --seed 12345 \
+    --run_test \
 
 echo "= = = = = = = = = = = = = ="
 echo "The project is Finished..."

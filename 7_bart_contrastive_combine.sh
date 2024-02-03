@@ -5,7 +5,7 @@ echo $currentDate
 start=`date +%s`
 echo "= = = = = = = = = = = = = ="
 
-python train.py \
+python3 train.py \
     --len_input 'topic-length' \
     --len_output 'no' \
     --output_dir ./output/7 \
@@ -24,7 +24,7 @@ python train.py \
     --weight_decay 1e-3 \
     --label_smoothing 0.1 \
     --length_penalty 1.0 \
-    --num_train_epochs 15 \
+    --num_train_epochs 1 \
     --per_device_train_batch_size 4 \
     --gradient_accumulation_steps 32 \
     --per_device_eval_batch_size 8 \
@@ -34,6 +34,7 @@ python train.py \
     --overwrite_cache True \
     --seed 12345 \
     --contrastive 'combine' \
+    --run_test \
 
 echo "= = = = = = = = = = = = = ="
 echo "The project is Finished..."

@@ -15,6 +15,20 @@ import utils
 from special_token import simple_tokenize, lemmatize_text, build_tagger
 from custom_dataloader import CustomWithNegativeDataCollator
 
+from gensim.test.utils import datapath, get_tmpfile
+from gensim.models import KeyedVectors
+from gensim.scripts.glove2word2vec import glove2word2vec
+
+import os
+
+# # get the current working directory
+# current_working_directory = os.getcwd()
+
+# # gensim
+# glove_file = datapath(current_working_directory+'/glove/glove.6B.300d.txt')
+# word2vec_glove_file = get_tmpfile(current_working_directory+"/glove/glove.6B.300d.word2vec.txt")
+# glove2word2vec(glove_file, word2vec_glove_file)
+# model = KeyedVectors.load_word2vec_format(word2vec_glove_file)
 
 def get_synonyms(word):
     synonyms = []
@@ -146,6 +160,13 @@ def load_from_dialogsum(args, file_path):
                         else:
                             synonyms_not_duplicate = word
                         synonym_topic.append(synonyms_not_duplicate)
+                        # try:
+                        #     # synonyms = model.most_similar(word)[0][0]
+                        #     synonyms = model.most_similar(negative=word)[0][0]
+                        #     synonyms_not_duplicate = synonyms
+                        # except:
+                        #     synonyms_not_duplicate = word
+                        # synonym_topic.append(synonyms_not_duplicate)
                     else:
                         synonym_topic.append(word)
                 synonym_topic_list.append(" ".join(synonym_topic))

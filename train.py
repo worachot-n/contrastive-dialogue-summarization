@@ -3,6 +3,7 @@ import os
 import pprint
 import logging
 import random
+import json
 
 import datasets
 import nltk
@@ -234,6 +235,9 @@ def main():
 
     val_results = []
     acc_losses = []
+    contrastive_losses_all = []
+    contrastive_losses_steps = []
+    contrastive_losses_epoch = []
     best_r2_f1 = None
     best_epoch = 0
 
@@ -250,6 +254,8 @@ def main():
 
     # =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  = Train =  =  =  =  =  =  =  =  =  =  =  =  =  =  =
     for epoch in range(args.num_train_epochs):
+        contrastive_epoch = []
+        contrastive_steps = []
         # train
         model.train()
         for step, batch in enumerate(train_dataloader):
@@ -274,10 +280,12 @@ def main():
                         ]
                         embeddings = embeddings.reshape(-1, max_encoder_token)
 
+                        # plus_one = torch.ones(embeddings.size(dim=0)).to(device)
                         minus_one = -torch.ones(embeddings.size(dim=0)).to(device)
 
                         if args.contrastive == "combine":
                             embeddings = torch.cat((embeddings, embeddings), 0)
+                            # plus_one = torch.cat((plus_one, plus_one), 0)
                             minus_one = torch.cat((minus_one, minus_one), 0)
 
                         pair_embeddings = outputs.encoder_last_hidden_state[
@@ -285,6 +293,7 @@ def main():
                         ]
                         pair_embeddings = pair_embeddings.reshape(-1, max_encoder_token)
                         loss_cs = cosine_embedding_loss(
+                            # embeddings, pair_embeddings, plus_one, args.margin
                             embeddings, pair_embeddings, minus_one, args.margin
                         )
 
@@ -317,10 +326,15 @@ def main():
                             args.label_smoothing,
                             ignore_index=tokenizer.pad_token_id,
                         )
-
+            
             acc_losses.append(loss.item())
             loss = loss / args.gradient_accumulation_steps
             accelerator.backward(loss)
+
+            contrastive_losses_all.append(loss_cs.item())
+
+            contrastive_epoch.append(loss_cs.item())
+            contrastive_steps.append(loss_cs.item())
 
             if (
                 step % args.gradient_accumulation_steps == 0
@@ -335,8 +349,12 @@ def main():
                 )
                 completed_steps += 1
 
+                contrastive_losses_steps.append(np.mean(contrastive_steps))
+
             if completed_steps >= args.max_train_steps:
                 break
+                 
+        contrastive_losses_epoch.append(np.mean(contrastive_epoch))
 
         # =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  = EVAL =  =  =  =  =  =  =  =  =  =  =  =  =  =  =
         model.eval()
@@ -557,6 +575,20 @@ def main():
                     "ascii"
                 )
                 f.write(test_predict_s)
+
+
+    file_json_all = f'./{args.len_input}_{args.contrastive}_all.json'
+    file_json_steps = f'./{args.len_input}_{args.contrastive}_steps.json'
+    file_json_epoch = f'./{args.len_input}_{args.contrastive}_epoch.json'
+    
+    with open(file_json_all, 'w') as output_file:
+    	print(json.dumps(contrastive_losses_all), file=output_file)
+    
+    with open(file_json_steps, 'w') as output_file:
+    	print(json.dumps(contrastive_losses_steps), file=output_file)
+
+    with open(file_json_epoch, 'w') as output_file:
+    	print(json.dumps(contrastive_losses_epoch), file=output_file)
 
 
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =

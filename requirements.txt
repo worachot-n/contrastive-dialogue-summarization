@@ -9,3 +9,4 @@ transformers==4.33.3
 accelerate==0.24.0
 py-rouge==1.1
 ipywidgets==8.1.0
+gensim==4.3.2
