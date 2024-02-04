@@ -15,20 +15,6 @@ import utils
 from special_token import simple_tokenize, lemmatize_text, build_tagger
 from custom_dataloader import CustomWithNegativeDataCollator
 
-from gensim.test.utils import datapath, get_tmpfile
-from gensim.models import KeyedVectors
-from gensim.scripts.glove2word2vec import glove2word2vec
-
-import os
-
-# # get the current working directory
-# current_working_directory = os.getcwd()
-
-# # gensim
-# glove_file = datapath(current_working_directory+'/glove/glove.6B.300d.txt')
-# word2vec_glove_file = get_tmpfile(current_working_directory+"/glove/glove.6B.300d.word2vec.txt")
-# glove2word2vec(glove_file, word2vec_glove_file)
-# model = KeyedVectors.load_word2vec_format(word2vec_glove_file)
 
 def get_synonyms(word):
     synonyms = []
@@ -64,6 +50,11 @@ def raw_data_loader(args):
         val_dict = load_from_dialogsum(args, args.validation_file)
         test_dict = load_from_dialogsum(args, args.test_file)
 
+    elif "macdial" in args.train_file:
+        train_dict = load_from_macsum(args, args.train_file)
+        val_dict = load_from_macsum(args, args.validation_file)
+        test_dict = load_from_macsum(args, args.test_file)
+
     train_dict = utils.len_adjust(args, train_dict, "train")
     val_dict = utils.len_adjust(args, val_dict, "val")
     test_dict = utils.len_adjust(args, test_dict, "test")
@@ -88,7 +79,8 @@ def load_from_samsum(args, file_path):
             dialogue_list.append(row["dialogue"])
             summary_list.append(row["summary"])
 
-    data_dict = {"id": id_list, "dialogue": dialogue_list, "summary": summary_list}
+    data_dict = {"id": id_list, "dialogue": dialogue_list,
+                 "summary": summary_list}
 
     data_dict = Dataset.from_dict(data_dict)
 
@@ -150,9 +142,11 @@ def load_from_dialogsum(args, file_path):
                 for word in tokenized_text:
                     if word not in {"a", "an", "the"}:
                         synonyms = get_synonyms(word)
-                        synonyms_not_duplicate = set(synonyms).difference(set([word]))
+                        synonyms_not_duplicate = set(
+                            synonyms).difference(set([word]))
                         if len(synonyms_not_duplicate):
-                            synonyms_not_duplicate_list = list(synonyms_not_duplicate)
+                            synonyms_not_duplicate_list = list(
+                                synonyms_not_duplicate)
                             synonyms_not_duplicate_list.sort()
                             synonyms_not_duplicate = random.choice(
                                 synonyms_not_duplicate_list
@@ -160,13 +154,6 @@ def load_from_dialogsum(args, file_path):
                         else:
                             synonyms_not_duplicate = word
                         synonym_topic.append(synonyms_not_duplicate)
-                        # try:
-                        #     # synonyms = model.most_similar(word)[0][0]
-                        #     synonyms = model.most_similar(negative=word)[0][0]
-                        #     synonyms_not_duplicate = synonyms
-                        # except:
-                        #     synonyms_not_duplicate = word
-                        # synonym_topic.append(synonyms_not_duplicate)
                     else:
                         synonym_topic.append(word)
                 synonym_topic_list.append(" ".join(synonym_topic))
@@ -188,13 +175,16 @@ def load_from_dialogsum(args, file_path):
         original_tokens = [simple_tokenize(x) for x in dialogue_list]
         lemmatized_tokens = [lemmatize_text(x) for x in dialogue_list]
         for i in range(len(lemmatized_tokens)):
-            tagger = build_tagger(original_tokens, lemmatized_tokens, topic_list[i], i)
+            tagger = build_tagger(
+                original_tokens, lemmatized_tokens, topic_list[i], i)
             original_tagger.extend(tagger)
         data_dict["dialogue"] = original_tagger
         if args.contrastive == "synonym" or args.contrastive == "combine":
             original_synonym_tagger = []
-            original_synonym_tokens = [simple_tokenize(x) for x in dialogue_list]
-            lemmatized_synonym_tokens = [lemmatize_text(x) for x in dialogue_list]
+            original_synonym_tokens = [
+                simple_tokenize(x) for x in dialogue_list]
+            lemmatized_synonym_tokens = [
+                lemmatize_text(x) for x in dialogue_list]
             for i in range(len(lemmatized_tokens)):
                 synonym_tagger = build_tagger(
                     original_synonym_tokens,
@@ -206,8 +196,120 @@ def load_from_dialogsum(args, file_path):
             data_dict["synonym_dialogue"] = original_synonym_tagger
         if args.contrastive == "random" or args.contrastive == "combine":
             original_random_tagger = []
-            original_random_tokens = [simple_tokenize(x) for x in dialogue_list]
-            lemmatized_random_tokens = [lemmatize_text(x) for x in dialogue_list]
+            original_random_tokens = [
+                simple_tokenize(x) for x in dialogue_list]
+            lemmatized_random_tokens = [
+                lemmatize_text(x) for x in dialogue_list]
+            for i in range(len(lemmatized_tokens)):
+                random_tagger = build_tagger(
+                    original_random_tokens,
+                    lemmatized_random_tokens,
+                    random_topic_list[i],
+                    i,
+                )
+                original_random_tagger.extend(random_tagger)
+            data_dict["random_dialogue"] = original_random_tagger
+
+    data_dict = Dataset.from_dict(data_dict)
+
+    return data_dict
+
+
+def load_from_macsum(args, file_path):
+    """load macdial_flatten jsonl data"""
+
+    with open(file_path, "r") as f:
+        # for line in f:
+        # data.append(json.loads(f))
+        raw_data = f.read()
+        data = json.loads(raw_data)
+
+    data_length = len(data)
+
+    id_list = [idx for idx in range(data_length)]
+    dialogue_list = [sample["article"].replace("</s>", "\n") for sample in data]
+
+    if "summary" in data[0]:
+        summary_list = [sample["summary"] for sample in data]
+        topic_list = [sample["topic"] for sample in data]
+
+    data_dict = {
+        "id": id_list,
+        "dialogue": dialogue_list,
+        "summary": summary_list,
+        "topic": topic_list,
+    }
+
+    if args.contrastive != "no":
+        topic_set = set(topic_list)
+        synonym_topic_list = []
+        random_topic_list = []
+        for topic in topic_list:
+            tokenized_text = nltk.word_tokenize(topic)
+            # synonym
+            if args.contrastive == "synonym" or args.contrastive == "combine":
+                synonym_topic = []
+                for word in tokenized_text:
+                    if word not in {"a", "an", "the"}:
+                        synonyms = get_synonyms(word)
+                        synonyms_not_duplicate = set(
+                            synonyms).difference(set([word]))
+                        if len(synonyms_not_duplicate):
+                            synonyms_not_duplicate_list = list(
+                                synonyms_not_duplicate)
+                            synonyms_not_duplicate_list.sort()
+                            synonyms_not_duplicate = random.choice(
+                                synonyms_not_duplicate_list
+                            )
+                        else:
+                            synonyms_not_duplicate = word
+                        synonym_topic.append(synonyms_not_duplicate)
+                    else:
+                        synonym_topic.append(word)
+                synonym_topic_list.append(" ".join(synonym_topic))
+            # random
+            if args.contrastive == "random" or args.contrastive == "combine":
+                new_topic_set = topic_set.difference(set(topic))
+                new_topic_list = list(new_topic_set)
+                new_topic_list.sort()
+                random_topic = random.choice(new_topic_list)
+                random_topic_list.append(random_topic)
+
+    if args.contrastive == "synonym" or args.contrastive == "combine":
+        data_dict["synonym_topic"] = synonym_topic_list
+    if args.contrastive == "random" or args.contrastive == "combine":
+        data_dict["random_topic"] = random_topic_list
+
+    if args.tagging != "no":
+        original_tagger = []
+        original_tokens = [simple_tokenize(x) for x in dialogue_list]
+        lemmatized_tokens = [lemmatize_text(x) for x in dialogue_list]
+        for i in range(len(lemmatized_tokens)):
+            tagger = build_tagger(
+                original_tokens, lemmatized_tokens, topic_list[i], i)
+            original_tagger.extend(tagger)
+        data_dict["dialogue"] = original_tagger
+        if args.contrastive == "synonym" or args.contrastive == "combine":
+            original_synonym_tagger = []
+            original_synonym_tokens = [
+                simple_tokenize(x) for x in dialogue_list]
+            lemmatized_synonym_tokens = [
+                lemmatize_text(x) for x in dialogue_list]
+            for i in range(len(lemmatized_tokens)):
+                synonym_tagger = build_tagger(
+                    original_synonym_tokens,
+                    lemmatized_synonym_tokens,
+                    synonym_topic_list[i],
+                    i,
+                )
+                original_synonym_tagger.extend(synonym_tagger)
+            data_dict["synonym_dialogue"] = original_synonym_tagger
+        if args.contrastive == "random" or args.contrastive == "combine":
+            original_random_tagger = []
+            original_random_tokens = [
+                simple_tokenize(x) for x in dialogue_list]
+            lemmatized_random_tokens = [
+                lemmatize_text(x) for x in dialogue_list]
             for i in range(len(lemmatized_tokens)):
                 random_tagger = build_tagger(
                     original_random_tokens,
@@ -244,7 +346,8 @@ def data_processor(logger, args, accelerator, raw_datasets, tokenizer, model):
             if args.ctrlen_model:
                 if "pred_len" in examples:
                     new_inputs.append(
-                        prefix + "<len_{}> ".format(examples["pred_len"][i]) + inp
+                        prefix +
+                        "<len_{}> ".format(examples["pred_len"][i]) + inp
                     )
 
                 else:
@@ -332,7 +435,8 @@ def data_processor(logger, args, accelerator, raw_datasets, tokenizer, model):
 
     # Log a few random samples from the training set:
     for index in random.sample(range(len(train_dataset)), 1):
-        logger.info(f"Sample {index} of the training set: {train_dataset[index]}.")
+        logger.info(
+            f"Sample {index} of the training set: {train_dataset[index]}.")
 
     label_pad_token_id = (
         -100 if args.ignore_pad_token_for_loss else tokenizer.pad_token_id
