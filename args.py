@@ -230,6 +230,7 @@ def parse_args():
             "topic",
             "length",
             "topic-length",
+            "topic-speaker-length",
         ),
     )
     parser.add_argument(
@@ -237,7 +238,7 @@ def parse_args():
         type=str,
         default="no",
         help="Use the ctrlen model or not",
-        choices=("no", "real"),
+        choices=("no"),
     )
     parser.add_argument(
         "--ctrlen_model",
@@ -302,6 +303,7 @@ def parse_args():
         default=0.0,
         help="hyperparameter for label smoothing.",
     )
+    # contrastive
     parser.add_argument(
         "--contrastive",
         type=str,
@@ -309,20 +311,7 @@ def parse_args():
         help="Use contrastive or not",
         choices=(
             "no",
-            "synonym",
-            "random",
-            "combine",
-        ),
-    )
-    parser.add_argument(
-        "--tagging",
-        type=str,
-        default="no",
-        help="Use tagging or not",
-        choices=(
-            "no",
-            "word",
-            "prompt",
+            "yes"
         ),
     )
     parser.add_argument(
