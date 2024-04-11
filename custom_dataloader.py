@@ -31,14 +31,12 @@ class CustomWithNegativeDataCollator:
             if "input_ids" in features[0].keys()
             else None
         )
-        if "synonym_inputs" in features[0].keys():
-            synonym_inputs = [
-                np.array(feature["synonym_inputs"]) for feature in features
-            ]
+        if "top_topic_inputs" in features[0].keys():
+            top_topic_inputs = [np.array(feature["top_topic_inputs"]) for feature in features]
         else:
             None
-        if "random_inputs" in features[0].keys():
-            random_inputs = [np.array(feature["random_inputs"]) for feature in features]
+        if "tail_topic_inputs" in features[0].keys():
+            tail_topic_inputs = [np.array(feature["tail_topic_inputs"]) for feature in features]
         else:
             None
 
@@ -74,33 +72,11 @@ class CustomWithNegativeDataCollator:
         new_labels = [feature["labels"] for feature in features]
 
         if (
-            "synonym_inputs" in features[0].keys()
-            and "random_inputs" not in features[0].keys()
+            "top_topic_inputs" in features[0].keys()
+            and "tail_topic_inputs" in features[0].keys()
         ):
             stack_features = self.tokenizer.pad(
-                {"input_ids": inputs + synonym_inputs},
-                padding=self.padding,
-                max_length=self.max_length,
-                pad_to_multiple_of=self.pad_to_multiple_of,
-                return_tensors=return_tensors,
-            )
-        elif (
-            "synonym_inputs" not in features[0].keys()
-            and "random_inputs" in features[0].keys()
-        ):
-            stack_features = self.tokenizer.pad(
-                {"input_ids": inputs + random_inputs},
-                padding=self.padding,
-                max_length=self.max_length,
-                pad_to_multiple_of=self.pad_to_multiple_of,
-                return_tensors=return_tensors,
-            )
-        elif (
-            "synonym_inputs" in features[0].keys()
-            and "random_inputs" in features[0].keys()
-        ):
-            stack_features = self.tokenizer.pad(
-                {"input_ids": inputs + synonym_inputs + random_inputs},
+                {"input_ids": inputs + top_topic_inputs + tail_topic_inputs},
                 padding=self.padding,
                 max_length=self.max_length,
                 pad_to_multiple_of=self.pad_to_multiple_of,
@@ -116,30 +92,8 @@ class CustomWithNegativeDataCollator:
             )
 
         if (
-            "synonym_inputs" in features[0].keys()
-            and "random_inputs" not in features[0].keys()
-        ):
-            stack_features["labels"] = self.tokenizer.pad(
-                {"input_ids": new_labels + new_labels},
-                padding=self.padding,
-                max_length=self.max_length,
-                pad_to_multiple_of=self.pad_to_multiple_of,
-                return_tensors=return_tensors,
-            )["input_ids"]
-        elif (
-            "synonym_inputs" not in features[0].keys()
-            and "random_inputs" in features[0].keys()
-        ):
-            stack_features["labels"] = self.tokenizer.pad(
-                {"input_ids": new_labels + new_labels},
-                padding=self.padding,
-                max_length=self.max_length,
-                pad_to_multiple_of=self.pad_to_multiple_of,
-                return_tensors=return_tensors,
-            )["input_ids"]
-        elif (
-            "synonym_inputs" in features[0].keys()
-            and "random_inputs" in features[0].keys()
+            "top_topic_inputs" in features[0].keys()
+            and "tail_topic_inputs" in features[0].keys()
         ):
             stack_features["labels"] = self.tokenizer.pad(
                 {"input_ids": new_labels + new_labels + new_labels},

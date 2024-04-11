@@ -122,7 +122,7 @@ def parse_args():
     parser.add_argument(
         "--text_column",
         type=str,
-        default=None,
+        default="dialogue",
         help="The name of the column in the datasets containing the full texts (for summarization).",
     )
     parser.add_argument(

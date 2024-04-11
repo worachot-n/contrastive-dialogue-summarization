@@ -1,6 +1,8 @@
 import json
 import csv
 import random
+import numpy as np
+import pandas as pd
 
 import datasets
 from datasets import Dataset
@@ -34,17 +36,17 @@ def raw_data_loader(args):
         elif "macdial" in args.train_file:
             args.train_file = "./data/dialogtest/dialogsum.train.jsonl"
             args.validation_file = "./data/dialogtest/dialogsum.dev.jsonl"
-            args.test_file = "./data/dialogtest/dialogsum.test.jsonl"           
-    else:    
-        if "dialogsum" in args.train_file:
-            train_dict = load_from_dialogsum(args, args.train_file)
-            val_dict = load_from_dialogsum(args, args.validation_file)
-            test_dict = load_from_dialogsum(args, args.test_file)
-    
-        elif "macdial" in args.train_file:
-            train_dict = load_from_macsum(args, args.train_file)
-            val_dict = load_from_macsum(args, args.validation_file)
-            test_dict = load_from_macsum(args, args.test_file)
+            args.test_file = "./data/dialogtest/dialogsum.test.jsonl"
+
+    if "dialogsum" in args.train_file:
+        train_dict = load_from_dialogsum(args, args.train_file)
+        val_dict = load_from_dialogsum(args, args.validation_file)
+        test_dict = load_from_dialogsum(args, args.test_file)
+
+    elif "macdial" in args.train_file:
+        train_dict = load_from_macsum(args, args.train_file)
+        val_dict = load_from_macsum(args, args.validation_file)
+        test_dict = load_from_macsum(args, args.test_file)
 
     train_dict = utils.len_adjust(args, train_dict, "train")
     val_dict = utils.len_adjust(args, val_dict, "val")
@@ -101,6 +103,15 @@ def load_from_dialogsum(args, file_path):
 
     if args.contrastive != "no":
         # Add contrastive topic
+        if "dialogsum" in args.train_file:
+            args.topic_file = "./data/dialogsum_topic.xlsx"
+            top_tail_topic = pd.read_excel(args.topic_file, usecols=['top_keyphrases[T-K]', 'tail_keyphrases[T-K]'])
+            top_topic = top_tail_topic['top_keyphrases[T-K]'].to_list()
+            tail_topic = top_tail_topic['tail_keyphrases[T-K]'].to_list()
+            top_topic = top_topic[:len(topic_list)]
+            tail_topic = tail_topic[:len(topic_list)]
+            data_dict['top_topic'] = top_topic
+            data_dict['tail_topic'] = tail_topic
 
     data_dict = Dataset.from_dict(data_dict)
 
@@ -111,27 +122,46 @@ def load_from_macsum(args, file_path):
     """load macdial_flatten jsonl data"""
 
     with open(file_path, "r") as f:
+        # for line in f:
+        # data.append(json.loads(f))
         raw_data = f.read()
         data = json.loads(raw_data)
 
     data_length = len(data)
 
     id_list = [idx for idx in range(data_length)]
-    dialogue_list = [sample["article"].replace("</s>", "\n") for sample in data]
+    dialogue_list = [sample["article"] for sample in data]
 
     if "summary" in data[0]:
         summary_list = [sample["summary"] for sample in data]
         topic_list = [sample["topic"] for sample in data]
+        speaker_list = [sample["speaker"] for sample in data]
+        length_list = [sample["length"] for sample in data]
+        extractive_list = [sample["extractiveness"] for sample in data]
+        specificity_list = [sample["specificity"] for sample in data]
 
     data_dict = {
         "id": id_list,
         "dialogue": dialogue_list,
         "summary": summary_list,
         "topic": topic_list,
+        "speaker": speaker_list,
+        "length": length_list,
+        "extractiveness": extractive_list,
+        "specificity": specificity_list,
     }
 
     if args.contrastive != "no":
-        # Add contrastive topic
+        # Add contrastive topic         
+        if "macdial" in args.train_file:
+            args.topic_file = "./data/macdial_topic.xlsx"
+            top_tail_topic = pd.read_excel(args.topic_file, usecols=['top_keyphrases[T-K]', 'tail_keyphrases[T-K]'])
+            top_topic = top_tail_topic['top_keyphrases[T-K]'].to_list()
+            tail_topic = top_tail_topic['tail_keyphrases[T-K]'].to_list()
+            top_topic = top_topic[:len(topic_list)]
+            tail_topic = tail_topic[:len(topic_list)]
+            data_dict['top_topic'] = top_topic
+            data_dict['tail_topic'] = tail_topic
 
     data_dict = Dataset.from_dict(data_dict)
 
@@ -175,24 +205,25 @@ def data_processor(logger, args, accelerator, raw_datasets, tokenizer, model):
             inputs, max_length=args.max_source_length, padding=padding, truncation=True
         )
 
-        if args.contrastive == "synonym" or args.contrastive == "combine":
-            synonym_inputs = examples["synonym_dialogue"]
-            synonym_model_inputs = tokenizer(
-                synonym_inputs,
+        if args.contrastive != "no":
+            top_topic_inputs = examples["top_topic_dialogue"]
+            top_topic_model_inputs = tokenizer(
+                top_topic_inputs,
                 max_length=args.max_source_length,
                 padding=padding,
                 truncation=True,
             )
-            model_inputs["synonym_inputs"] = synonym_model_inputs["input_ids"]
-        if args.contrastive == "random" or args.contrastive == "combine":
-            random_inputs = examples["random_dialogue"]
-            random_model_inputs = tokenizer(
-                random_inputs,
+            model_inputs["top_topic_inputs"] = top_topic_model_inputs["input_ids"]
+            
+            tail_topic_inputs = examples["tail_topic_dialogue"]
+            tail_topic_model_inputs = tokenizer(
+                tail_topic_inputs,
                 max_length=args.max_source_length,
                 padding=padding,
                 truncation=True,
             )
-            model_inputs["random_inputs"] = random_model_inputs["input_ids"]
+            model_inputs["tail_topic_inputs"] = tail_topic_model_inputs["input_ids"]
+
 
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
         # padding in the loss.
@@ -256,19 +287,8 @@ def data_processor(logger, args, accelerator, raw_datasets, tokenizer, model):
     )
 
     if args.contrastive != "no":
-        if args.contrastive == "combine":
-            eval_dataset = eval_dataset.remove_columns(
-                ["synonym_inputs", "random_inputs"]
-            )
-            test_dataset = test_dataset.remove_columns(
-                ["synonym_inputs", "random_inputs"]
-            )
-        elif args.contrastive == "synonym":
-            eval_dataset = eval_dataset.remove_columns(["synonym_inputs"])
-            test_dataset = test_dataset.remove_columns(["synonym_inputs"])
-        elif args.contrastive == "random":
-            eval_dataset = eval_dataset.remove_columns(["random_inputs"])
-            test_dataset = test_dataset.remove_columns(["random_inputs"])
+        eval_dataset = eval_dataset.remove_columns(["top_topic_inputs", "tail_topic_inputs"])
+        test_dataset = test_dataset.remove_columns(["top_topic_inputs", "tail_topic_inputs"])
 
         data_collator = CustomWithNegativeDataCollator(
             tokenizer,
@@ -283,6 +303,7 @@ def data_processor(logger, args, accelerator, raw_datasets, tokenizer, model):
             label_pad_token_id=label_pad_token_id,
             pad_to_multiple_of=8 if accelerator.use_fp16 else None,
         )
+        
         train_dataloader = DataLoader(
             train_dataset,
             shuffle=True,

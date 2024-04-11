@@ -57,15 +57,13 @@ def len_adjust(args, split_dict, split_type=None):
     dialogue_list = split_dict["dialogue"]
     summary_list = split_dict["summary"]
     topic_list = split_dict["topic"]
-    if args.contrastive == "synonym" or args.contrastive == "combine":
-        synonym_list = split_dict["synonym_topic"]
-    if args.contrastive == "random" or args.contrastive == "combine":
-        random_list = split_dict["random_topic"]
-    if args.tagging != "no":
-        if args.contrastive == "synonym" or args.contrastive == "combine":
-            dialogue_synonym_list = split_dict["synonym_dialogue"]
-        if args.contrastive == "random" or args.contrastive == "combine":
-            dialogue_random_list = split_dict["random_dialogue"]
+    
+    if args.contrastive != "no":
+        top_topic_list = split_dict["top_topic"]
+        tail_topic_list = split_dict["tail_topic"]
+
+    if args.len_input == "topic-speaker-length":
+        speaker_list = split_dict["speaker"]
 
     if args.len_input == "no":
         new_dialogue_list = dialogue_list
@@ -74,169 +72,56 @@ def len_adjust(args, split_dict, split_type=None):
         new_dialogue_list = []
         for dialogue, topic in zip(dialogue_list, topic_list):
             new_dialogue = "Topic of Summary: {}. Dialogue: ".format(topic) + dialogue
-            if args.tagging == "word":
-                new_dialogue = (
-                    "Topic of Summary: <t>{}</t>. Dialogue: ".format(
-                        topic
-                    )
-                    + dialogue
-                )
-            elif args.tagging == "prompt":
-                new_dialogue = (
-                    "<t>Topic of Summary: {}</t>. Dialogue: ".format(
-                        topic
-                    )
-                    + dialogue
-                )
-            else:
-                new_dialogue = (
-                    "Topic of Summary: {}. Dialogue: ".format(
-                        topic
-                    )
-                    + dialogue
-                )
             new_dialogue_list.append(new_dialogue)
 
     elif args.len_input == "length":
         new_dialogue_list = []
         for dialogue, summary in zip(dialogue_list, summary_list):
             sum_len = len(summary.split(" "))
-            new_dialogue = (
-                "Length of Summary: {}. Dialogue: ".format(sum_len) + dialogue
-            )
+            new_dialogue = ("Length of Summary: {}. Dialogue: ".format(sum_len) + dialogue)
             new_dialogue_list.append(new_dialogue)
 
     elif args.len_input == "topic-length":
         new_dialogue_list = []
         for dialogue, topic, summary in zip(dialogue_list, topic_list, summary_list):
             sum_len = len(summary.split(" "))
-            if args.tagging == "word":
-                new_dialogue = (
-                    "Topic of Summary: <t>{}</t>. Length of Summary: {}. Dialogue: ".format(
-                        topic, sum_len
-                    )
-                    + dialogue
-                )
-            elif args.tagging == "prompt":
-                new_dialogue = (
-                    "<t>Topic of Summary: {}</t>. Length of Summary: {}. Dialogue: ".format(
-                        topic, sum_len
-                    )
-                    + dialogue
-                )
-            else:
-                new_dialogue = (
-                    "Topic of Summary: {}. Length of Summary: {}. Dialogue: ".format(
-                        topic, sum_len
-                    )
-                    + dialogue
-                )
+            new_dialogue = ("Topic of Summary: {}. Length of Summary: {}. Dialogue: ".format(topic, sum_len) + dialogue)
             new_dialogue_list.append(new_dialogue)
 
-    if args.contrastive == "synonym" or args.contrastive == "combine":
-        if args.tagging != "no":
-            dialogue_list = dialogue_synonym_list
-        new_synonym_list = []
-        for dialogue, synonym, summary in zip(
-            dialogue_list, synonym_list, summary_list
-        ):
+    elif args.len_input == "topic-speaker-length":
+        new_dialogue_list = []
+        for dialogue, topic, speaker, summary in zip(dialogue_list, topic_list, speaker_list, summary_list):
             sum_len = len(summary.split(" "))
-            if args.tagging == "word":
-                new_dialogue = (
-                    "Topic of Summary: <t>{}</t>. Length of Summary: {}. Dialogue: ".format(
-                        synonym, sum_len
-                    )
-                    + dialogue
-                )
-            elif args.tagging == "prompt":
-                new_dialogue = (
-                    "<t>Topic of Summary: {}</t>. Length of Summary: {}. Dialogue: ".format(
-                        synonym, sum_len
-                    )
-                    + dialogue
-                )
-            else:
-                new_dialogue = (
-                    "Topic of Summary: {}. Length of Summary: {}. Dialogue: ".format(
-                        synonym, sum_len
-                    )
-                    + dialogue
-                )
-            new_synonym_list.append(new_dialogue)
+            new_dialogue = ("Topic of Summary: {}. Speaker: {}. Length of Summary: {}. Dialogue: ".format(topic, speaker, sum_len) + dialogue)
+            new_dialogue_list.append(new_dialogue)
+    
+    if args.contrastive != "no":
+        if args.len_input == "topic-length":
+            new_top_topic_list = []
+            new_tail_topic_list = []
+            for dialogue, summary, top_topic, tail_topic in zip(dialogue_list, summary_list, top_topic_list, tail_topic_list):
+                sum_len = len(summary.split(" "))
+                new_dialogue = ("Topic of Summary: {}. Length of Summary: {}. Dialogue: ".format(top_topic, sum_len) + dialogue)
+                new_top_topic_list.append(new_dialogue)
+                
+                new_dialogue = ("Topic of Summary: {}. Length of Summary: {}. Dialogue: ".format(tail_topic, sum_len) + dialogue)
+                new_tail_topic_list.append(new_dialogue)
+                
+        elif args.len_input == "topic-speaker-length":
+            new_top_topic_list = []
+            new_tail_topic_list = []
+            for dialogue, topic, speaker, top_topic, tail_topic in zip(dialogue_list, topic_list, speaker_list, top_topic_list, tail_topic_list):
+                sum_len = len(summary.split(" "))
+                new_dialogue = ("Topic of Summary: {}. Speaker: {}. Length of Summary: {}. Dialogue: ".format(top_topic, speaker, sum_len) + dialogue)
+                new_top_topic_list.append(new_dialogue)
+                
+                new_dialogue = ("Topic of Summary: {}. Speaker: {}. Length of Summary: {}. Dialogue: ".format(tail_topic, speaker, sum_len) + dialogue)
+                new_tail_topic_list.append(new_dialogue)
 
-    if args.contrastive == "random" or args.contrastive == "combine":
-        if args.tagging != "no":
-            dialogue_list = dialogue_random_list
-        new_random_list = []
-        for dialogue, random, summary in zip(dialogue_list, random_list, summary_list):
-            sum_len = len(summary.split(" "))
-            if args.tagging == "word":
-                new_dialogue = (
-                    "Topic of Summary: <t>{}</t>. Length of Summary: {}. Dialogue: ".format(
-                        random, sum_len
-                    )
-                    + dialogue
-                )
-            elif args.tagging == "prompt":
-                new_dialogue = (
-                    "<t>Topic of Summary: {}</t>. Length of Summary: {}. Dialogue: ".format(
-                        random, sum_len
-                    )
-                    + dialogue
-                )
-            else:
-                new_dialogue = (
-                    "Topic of Summary: {}. Length of Summary: {}. Dialogue: ".format(
-                        random, sum_len
-                    )
-                    + dialogue
-                )
-            new_random_list.append(new_dialogue)
-
-    # elif args.len_input == 'surface':
-    #     new_dialogue_list = []
-    #     for dialogue in dialogue_list:
-    #         utt_diag  = dialogue.split('\n')
-    #         num_utt   = len(utt_diag)
-    #         word_diag = [utt.split(' ') for utt in utt_diag]
-    #         word_diag = [word for utt in word_diag for word in utt]
-    #         num_word  = len(word_diag)
-
-    #         new_dialogue = 'Number of utterrance: {}. Length of Dialogue: {}. Dialogue: {}'.format(num_utt, num_word, dialogue)
-    #         new_dialogue_list.append(new_dialogue)
-
-    # elif args.len_input == 'real' or split_type != 'test':
-    #     new_dialogue_list = []
-    #     for dialogue, summary in zip(dialogue_list, summary_list):
-    #         sum_len = len(summary.split(' '))
-    #         new_dialogue = 'Length of Summary: {}. Dialogue: '.format(sum_len) + dialogue
-    #         new_dialogue_list.append(new_dialogue)
-
-    # elif args.len_input == 'predict':
-    #     if split_type == 'test':
-    #         new_dialogue_list = []
-    #         if 'dialogsum' in args.train_file:
-    #             with open('./data/dialogsum/predicted_len.txt', 'r') as f:
-    #                 lines = f.readlines()
-    #         elif 'samsum' in args.train_file:
-    #             with open('./data/samsum/predicted_len.txt', 'r') as f:
-    #                 lines = f.readlines()
-
-    #         for line, dialogue in zip(lines, dialogue_list):
-    #             index, length = line.strip().split('\t')
-    #             length = int(length)
-    #             new_dialogue = 'Length of Summary: {}. Dialogue: '.format(length) + dialogue
-    #             new_dialogue_list.append(new_dialogue)
 
     if args.len_output == "no" or split_type == "val" or split_type == "test":
         new_summary_list = summary_list
-
-    # elif args.len_output == 'real':
-    #     new_summary_list = []
-    #     for summary in summary_list:
-    #         sum_len = len(summary.split(' '))
-    #         new_summary = 'Length of Summary: {}. Summary: '.format(sum_len) + summary
-    #         new_summary_list.append(new_summary)
+        
 
     split_dict = {
         "id": id_list,
@@ -244,10 +129,9 @@ def len_adjust(args, split_dict, split_type=None):
         "summary": new_summary_list,
     }
 
-    if args.contrastive == "synonym" or args.contrastive == "combine":
-        split_dict["synonym_dialogue"] = new_synonym_list
-    if args.contrastive == "random" or args.contrastive == "combine":
-        split_dict["random_dialogue"] = new_random_list
+    if args.contrastive != "no":
+        split_dict["top_topic_dialogue"] = new_top_topic_list
+        split_dict["tail_topic_dialogue"] = new_tail_topic_list
 
     split_dict = Dataset.from_dict(split_dict)
 

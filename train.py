@@ -102,19 +102,6 @@ def main():
     # load raw dataset
     raw_datasets = raw_data_loader(args)
 
-    # # If passed along, set the training seed now.
-    # if args.seed is not None:
-    #     set_seed(args.seed)
-    #     random.seed(args.seed)
-    #     os.environ["PYTHONHASHSEED"] = str(args.seed)
-    #     np.random.seed(args.seed)
-    #     torch.manual_seed(args.seed)
-    #     torch.cuda.manual_seed(args.seed)
-    #     torch.cuda.manual_seed_all(args.seed)
-    #     torch.backends.cudnn.enabled = False
-    #     torch.backends.cudnn.benchmark = False
-    #     torch.backends.cudnn.deterministic = True
-
     # load model (config, tokenizer, s2s model)
     config, tokenizer, model = model_loader(accelerator, logger, args)
 
@@ -279,21 +266,17 @@ def main():
                             : args.per_device_train_batch_size, :, :max_encoder_token
                         ]
                         embeddings = embeddings.reshape(-1, max_encoder_token)
-
-                        # plus_one = torch.ones(embeddings.size(dim=0)).to(device)
                         minus_one = -torch.ones(embeddings.size(dim=0)).to(device)
 
-                        if args.contrastive == "combine":
-                            embeddings = torch.cat((embeddings, embeddings), 0)
-                            # plus_one = torch.cat((plus_one, plus_one), 0)
-                            minus_one = torch.cat((minus_one, minus_one), 0)
+                        embeddings = torch.cat((embeddings, embeddings), 0)
+                        minus_one = torch.cat((minus_one, minus_one), 0)
 
                         pair_embeddings = outputs.encoder_last_hidden_state[
                             args.per_device_train_batch_size :, :, :max_encoder_token
                         ]
                         pair_embeddings = pair_embeddings.reshape(-1, max_encoder_token)
+                        
                         loss_cs = cosine_embedding_loss(
-                            # embeddings, pair_embeddings, plus_one, args.margin
                             embeddings, pair_embeddings, minus_one, args.margin
                         )
 
