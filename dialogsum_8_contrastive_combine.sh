@@ -34,6 +34,7 @@ python3 train.py \
     --overwrite_cache True \
     --seed 12345 \
     --contrastive 'yes' \
+    --alpha 1.0 \
     --margin 0.4 \
 
 echo "= = = = = = = = = = = = = ="
