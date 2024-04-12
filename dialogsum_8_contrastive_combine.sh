@@ -8,7 +8,7 @@ echo "= = = = = = = = = = = = = ="
 python3 train.py \
     --len_input 'topic-length' \
     --len_output 'no' \
-    --output_dir ./output/7 \
+    --output_dir ./output/8 \
     --train_file ./data/dialogsum/dialogsum.train.jsonl \
     --validation_file ./data/dialogsum/dialogsum.dev.jsonl \
     --test_file ./data/dialogsum/dialogsum.test.jsonl \
@@ -34,7 +34,7 @@ python3 train.py \
     --overwrite_cache True \
     --seed 12345 \
     --contrastive 'yes' \
-    --margin 0.1 \
+    --margin 0.4 \
 
 echo "= = = = = = = = = = = = = ="
 echo "The project is Finished..."
