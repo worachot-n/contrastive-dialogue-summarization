@@ -287,6 +287,11 @@ def data_processor(logger, args, accelerator, raw_datasets, tokenizer, model):
     )
 
     if args.contrastive != "no":
+        if args.contrastive == "top":
+            train_dataset = train_dataset.remove_columns(["tail_topic_inputs"])
+        elif args.contrastive == "tail":
+            train_dataset = train_dataset.remove_columns(["top_topic_inputs"])
+
         eval_dataset = eval_dataset.remove_columns(["top_topic_inputs", "tail_topic_inputs"])
         test_dataset = test_dataset.remove_columns(["top_topic_inputs", "tail_topic_inputs"])
 

@@ -222,6 +222,9 @@ def main():
 
     val_results = []
     acc_losses = []
+    losses_all = []
+    losses_steps = []
+    losses_epoch = []
     contrastive_losses_all = []
     contrastive_losses_steps = []
     contrastive_losses_epoch = []
@@ -241,6 +244,8 @@ def main():
 
     # =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  = Train =  =  =  =  =  =  =  =  =  =  =  =  =  =  =
     for epoch in range(args.num_train_epochs):
+        loss_epoch = []
+        loss_steps = []
         contrastive_epoch = []
         contrastive_steps = []
         # train
@@ -268,8 +273,9 @@ def main():
                         embeddings = embeddings.reshape(-1, max_encoder_token)
                         minus_one = -torch.ones(embeddings.size(dim=0)).to(device)
 
-                        embeddings = torch.cat((embeddings, embeddings), 0)
-                        minus_one = torch.cat((minus_one, minus_one), 0)
+                        if args.contrastive == "top-tail":
+                            embeddings = torch.cat((embeddings, embeddings), 0)
+                            minus_one = torch.cat((minus_one, minus_one), 0)
 
                         pair_embeddings = outputs.encoder_last_hidden_state[
                             args.per_device_train_batch_size :, :, :max_encoder_token
@@ -309,11 +315,16 @@ def main():
                             args.label_smoothing,
                             ignore_index=tokenizer.pad_token_id,
                         )
+
+            losses_all.append(loss.item())
+
+            loss_epoch.append(loss.item())
+            loss_steps.append(loss.item())           
             
             acc_losses.append(loss.item())
             loss = loss / args.gradient_accumulation_steps
             accelerator.backward(loss)
-
+   
             contrastive_losses_all.append(loss_cs.item())
 
             contrastive_epoch.append(loss_cs.item())
@@ -332,11 +343,13 @@ def main():
                 )
                 completed_steps += 1
 
-                contrastive_losses_steps.append(np.mean(contrastive_steps))
+                losses_steps.append(np.mean(loss_epoch))
+                contrastive_losses_steps.append(np.mean(loss_steps))
 
             if completed_steps >= args.max_train_steps:
                 break
                  
+        losses_epoch.append(np.mean(loss_epoch))
         contrastive_losses_epoch.append(np.mean(contrastive_epoch))
 
         # =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  = EVAL =  =  =  =  =  =  =  =  =  =  =  =  =  =  =
@@ -559,19 +572,26 @@ def main():
                 )
                 f.write(test_predict_s)
 
+    file_json_loss = f'{args.output_dir}/loss_{args.len_input}_{args.contrastive}.json'
+    file_json_contrastive = f'{args.output_dir}/contrastive_{args.len_input}_{args.contrastive}.json'
 
-    file_json_all = f'./{args.len_input}_{args.contrastive}_all.json'
-    file_json_steps = f'./{args.len_input}_{args.contrastive}_steps.json'
-    file_json_epoch = f'./{args.len_input}_{args.contrastive}_epoch.json'
-    
-    with open(file_json_all, 'w') as output_file:
-    	print(json.dumps(contrastive_losses_all), file=output_file)
-    
-    with open(file_json_steps, 'w') as output_file:
-    	print(json.dumps(contrastive_losses_steps), file=output_file)
+    loss_json = {
+        "losses_steps": losses_steps,
+        "losses_epoch": losses_epoch,
+        "losses_all": losses_all
+    }
 
-    with open(file_json_epoch, 'w') as output_file:
-    	print(json.dumps(contrastive_losses_epoch), file=output_file)
+    contrastive_json = {
+        "contrastive_losses_steps": contrastive_losses_steps,
+        "contrastive_losses_epoch": contrastive_losses_epoch,
+        "contrastive_losses_all": contrastive_losses_all
+    }
+    
+    with open(file_json_loss, 'w') as output_file:
+    	print(json.dumps(loss_json), file=output_file)
+    
+    with open(file_json_contrastive, 'w') as output_file:
+    	print(json.dumps(contrastive_json), file=output_file)
 
 
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =

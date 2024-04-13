@@ -73,6 +73,28 @@ class CustomWithNegativeDataCollator:
 
         if (
             "top_topic_inputs" in features[0].keys()
+            and "tail_topic_inputs" not in features[0].keys()
+        ):
+            stack_features = self.tokenizer.pad(
+                {"input_ids": inputs + top_topic_inputs},
+                padding=self.padding,
+                max_length=self.max_length,
+                pad_to_multiple_of=self.pad_to_multiple_of,
+                return_tensors=return_tensors,
+            )
+        elif (
+            "top_topic_inputs" not in features[0].keys()
+            and "tail_topic_inputs" in features[0].keys()
+        ):
+            stack_features = self.tokenizer.pad(
+                {"input_ids": inputs + tail_topic_inputs},
+                padding=self.padding,
+                max_length=self.max_length,
+                pad_to_multiple_of=self.pad_to_multiple_of,
+                return_tensors=return_tensors,
+            )
+        elif (
+            "top_topic_inputs" in features[0].keys()
             and "tail_topic_inputs" in features[0].keys()
         ):
             stack_features = self.tokenizer.pad(
@@ -92,6 +114,28 @@ class CustomWithNegativeDataCollator:
             )
 
         if (
+            "top_topic_inputs" in features[0].keys()
+            and "tail_topic_inputs" not in features[0].keys()
+        ):
+            stack_features["labels"] = self.tokenizer.pad(
+                {"input_ids": new_labels + new_labels},
+                padding=self.padding,
+                max_length=self.max_length,
+                pad_to_multiple_of=self.pad_to_multiple_of,
+                return_tensors=return_tensors,
+            )["input_ids"]
+        elif (
+            "top_topic_inputs" not in features[0].keys()
+            and "tail_topic_inputs" in features[0].keys()
+        ):
+            stack_features["labels"] = self.tokenizer.pad(
+                {"input_ids": new_labels + new_labels},
+                padding=self.padding,
+                max_length=self.max_length,
+                pad_to_multiple_of=self.pad_to_multiple_of,
+                return_tensors=return_tensors,
+            )["input_ids"]
+        elif (
             "top_topic_inputs" in features[0].keys()
             and "tail_topic_inputs" in features[0].keys()
         ):

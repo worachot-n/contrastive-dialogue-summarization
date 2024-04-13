@@ -311,7 +311,9 @@ def parse_args():
         help="Use contrastive or not",
         choices=(
             "no",
-            "yes"
+            "top",
+            "tail",
+            "top-tail",
         ),
     )
     parser.add_argument(
