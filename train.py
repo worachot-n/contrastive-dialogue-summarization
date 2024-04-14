@@ -225,9 +225,15 @@ def main():
     losses_all = []
     losses_steps = []
     losses_epoch = []
-    contrastive_losses_all = []
-    contrastive_losses_steps = []
-    contrastive_losses_epoch = []
+    contrastive_losses_all_top = []
+    contrastive_losses_steps_top = []
+    contrastive_losses_epoch_top = []
+    contrastive_losses_all_tail = []
+    contrastive_losses_steps_tail = []
+    contrastive_losses_epoch_tail = []
+    contrastive_losses_all_top_tail = []
+    contrastive_losses_steps_top_tail = []
+    contrastive_losses_epoch_top_tail = []
     best_r2_f1 = None
     best_epoch = 0
 
@@ -241,13 +247,17 @@ def main():
         model.config.update(params)
     else:
         raise ValueError("{} model type not implemented".format(args.model_type))
-
+    
     # =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  = Train =  =  =  =  =  =  =  =  =  =  =  =  =  =  =
     for epoch in range(args.num_train_epochs):
         loss_epoch = []
         loss_steps = []
-        contrastive_epoch = []
-        contrastive_steps = []
+        contrastive_epoch_top = []
+        contrastive_epoch_tail = []
+        contrastive_epoch_top_tail = []
+        contrastive_steps_top = []
+        contrastive_steps_tail = []
+        contrastive_steps_top_tail = []
         # train
         model.train()
         for step, batch in enumerate(train_dataloader):
@@ -264,7 +274,7 @@ def main():
                     output_probs = torch.nn.functional.log_softmax(
                         output_logits, dim=-1
                     )
-
+    
                     if args.contrastive != "no":
                         max_encoder_token = model.config.max_position_embeddings
                         embeddings = outputs.encoder_last_hidden_state[
@@ -272,20 +282,55 @@ def main():
                         ]
                         embeddings = embeddings.reshape(-1, max_encoder_token)
                         minus_one = -torch.ones(embeddings.size(dim=0)).to(device)
-
-                        if args.contrastive == "top-tail":
-                            embeddings = torch.cat((embeddings, embeddings), 0)
-                            minus_one = torch.cat((minus_one, minus_one), 0)
-
+    
+                        # =====================================================#
+                        # differrent margin
+                        embeddings_for_top = embeddings
+                        embeddings_for_tail = embeddings
+                        # =====================================================#
+    
+                        # if args.contrastive == "top-tail":
+                        #     embeddings = torch.cat((embeddings, embeddings), 0)
+                        #     minus_one = torch.cat((minus_one, minus_one), 0)
+    
                         pair_embeddings = outputs.encoder_last_hidden_state[
                             args.per_device_train_batch_size :, :, :max_encoder_token
                         ]
                         pair_embeddings = pair_embeddings.reshape(-1, max_encoder_token)
+    
+                        # =====================================================#
+                        # differrent margin
+                        pair_embeddings_top = pair_embeddings[:embeddings.shape[0]]
+                        pair_embeddings_tail = pair_embeddings[embeddings.shape[0]:]
+                        # =====================================================#
+    
+                        # print("embeddings top shape: ", embeddings.shape)
+                        # print("pair_embeddings top shape: ", pair_embeddings_top.shape)
+                        # print("embeddings tail shape: ", embeddings.shape)
+                        # print("pair_embeddings tail shape: ", pair_embeddings_tail.shape)
+                        # print("minus_one: ", minus_one.shape)
                         
-                        loss_cs = cosine_embedding_loss(
-                            embeddings, pair_embeddings, minus_one, args.margin
+                        # loss_cs = cosine_embedding_loss(
+                        #     embeddings, pair_embeddings, minus_one, args.margin
+                        # )
+    
+                        # =====================================================#
+                        # differrent margin
+                        loss_cs_top = cosine_embedding_loss(
+                            embeddings_for_top, pair_embeddings_top, minus_one, 0.4
                         )
-
+                        loss_cs_tail = cosine_embedding_loss(
+                            embeddings_for_tail, pair_embeddings_tail, minus_one, 0.1
+                        )
+                        loss_cs = (loss_cs_top + loss_cs_tail) / 2
+                        # =====================================================#
+    
+                        # print("loss_cs_top  margin 0.4: ", loss_cs_top)
+                        # print("loss_cs_tail margin 0.1: ", loss_cs_tail)
+                        # print("loss_cs: ", loss_cs)
+    
+                        # break
+    
                         output_probs = output_probs[
                             : args.per_device_train_batch_size, :, :
                         ]
@@ -302,34 +347,41 @@ def main():
                         )
                         # joint loss
                         loss = loss_nll + (args.alpha * loss_cs)
-
+    
                     else:
                         output_probs = output_probs.view(-1, model.config.vocab_size)
-
+    
                         gt_logits = batch["labels"]
                         gt_logits = gt_logits.view(-1)
-
+    
                         loss, _ = label_smoothed_nll_loss(
                             output_probs,
                             gt_logits,
                             args.label_smoothing,
                             ignore_index=tokenizer.pad_token_id,
                         )
-
+    
             losses_all.append(loss.item())
-
+    
             loss_epoch.append(loss.item())
             loss_steps.append(loss.item())           
             
             acc_losses.append(loss.item())
             loss = loss / args.gradient_accumulation_steps
             accelerator.backward(loss)
-   
-            contrastive_losses_all.append(loss_cs.item())
-
-            contrastive_epoch.append(loss_cs.item())
-            contrastive_steps.append(loss_cs.item())
-
+    
+            contrastive_losses_all_top.append(loss_cs_top.item())
+            contrastive_losses_all_tail.append(loss_cs_tail.item())
+            contrastive_losses_all_top_tail.append(loss_cs.item())
+    
+            contrastive_steps_top.append(loss_cs_top.item())
+            contrastive_steps_tail.append(loss_cs_tail.item())
+            contrastive_steps_top_tail.append(loss_cs.item())
+    
+            contrastive_epoch_top.append(loss_cs_top.item())
+            contrastive_epoch_tail.append(loss_cs_tail.item())
+            contrastive_epoch_top_tail.append(loss_cs.item())
+    
             if (
                 step % args.gradient_accumulation_steps == 0
                 or step == len(train_dataloader) - 1
@@ -342,15 +394,19 @@ def main():
                     lr=lr_scheduler.get_last_lr()[0], loss=np.mean(acc_losses[-50:])
                 )
                 completed_steps += 1
-
-                losses_steps.append(np.mean(loss_epoch))
-                contrastive_losses_steps.append(np.mean(loss_steps))
-
+    
+                losses_steps.append(np.mean(loss_steps))
+                contrastive_losses_steps_top.append(np.mean(contrastive_steps_top))
+                contrastive_losses_steps_top.append(np.mean(contrastive_steps_tail))
+                contrastive_losses_steps_top.append(np.mean(contrastive_steps_top_tail))
+    
             if completed_steps >= args.max_train_steps:
                 break
                  
         losses_epoch.append(np.mean(loss_epoch))
-        contrastive_losses_epoch.append(np.mean(contrastive_epoch))
+        contrastive_losses_epoch_top.append(np.mean(contrastive_epoch_top))
+        contrastive_losses_epoch_tail.append(np.mean(contrastive_epoch_tail))
+        contrastive_losses_epoch_top_tail.append(np.mean(contrastive_epoch_top_tail))
 
         # =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  = EVAL =  =  =  =  =  =  =  =  =  =  =  =  =  =  =
         model.eval()
@@ -582,9 +638,15 @@ def main():
     }
 
     contrastive_json = {
-        "contrastive_losses_steps": contrastive_losses_steps,
-        "contrastive_losses_epoch": contrastive_losses_epoch,
-        "contrastive_losses_all": contrastive_losses_all
+        "contrastive_losses_steps_top": contrastive_losses_steps_top,
+        "contrastive_losses_epoch_top": contrastive_losses_epoch_top,
+        "contrastive_losses_all_top": contrastive_losses_all_top,
+        "contrastive_losses_steps_tail": contrastive_losses_steps_tail,
+        "contrastive_losses_epoch_tail": contrastive_losses_epoch_tail,
+        "contrastive_losses_all_tail": contrastive_losses_all_tail,
+        "contrastive_losses_steps_top_tail": contrastive_losses_steps_top_tail,
+        "contrastive_losses_epoch_top_tail": contrastive_losses_epoch_top_tail,
+        "contrastive_losses_all_top_tail": contrastive_losses_all_top_tail,
     }
     
     with open(file_json_loss, 'w') as output_file:
