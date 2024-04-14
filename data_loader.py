@@ -111,7 +111,17 @@ def load_from_dialogsum(args, file_path):
             top_topic = top_topic[:len(topic_list)]
             tail_topic = tail_topic[:len(topic_list)]
             data_dict['top_topic'] = top_topic
-            data_dict['tail_topic'] = tail_topic
+            # data_dict['tail_topic'] = tail_topic
+            
+            topic_set = set(topic_list)
+            random_topic_list = []
+            for topic in topic_list:
+                new_topic_set = topic_set.difference(set(topic))
+                new_topic_list = list(new_topic_set)
+                new_topic_list.sort()
+                random_topic = random.choice(new_topic_list)
+                random_topic_list.append(random_topic)
+            data_dict['tail_topic'] = random_topic_list
 
     data_dict = Dataset.from_dict(data_dict)
 
@@ -161,7 +171,17 @@ def load_from_macsum(args, file_path):
             top_topic = top_topic[:len(topic_list)]
             tail_topic = tail_topic[:len(topic_list)]
             data_dict['top_topic'] = top_topic
-            data_dict['tail_topic'] = tail_topic
+            # data_dict['tail_topic'] = tail_topic
+
+            topic_set = set(topic_list)
+            random_topic_list = []
+            for topic in topic_list:
+                new_topic_set = topic_set.difference(set(topic))
+                new_topic_list = list(new_topic_set)
+                new_topic_list.sort()
+                random_topic = random.choice(new_topic_list)
+                random_topic_list.append(random_topic)
+            data_dict['tail_topic'] = random_topic_list
 
     data_dict = Dataset.from_dict(data_dict)
 
