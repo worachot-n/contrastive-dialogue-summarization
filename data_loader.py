@@ -105,23 +105,18 @@ def load_from_dialogsum(args, file_path):
         # Add contrastive topic
         if "dialogsum" in args.train_file:
             args.topic_file = "./data/dialogsum_topic.xlsx"
-            top_tail_topic = pd.read_excel(args.topic_file, usecols=['top_keyphrases[T-K]', 'tail_keyphrases[T-K]'])
+            top_tail_topic = pd.read_excel(args.topic_file, usecols=['top_keyphrases[T-K]', 'tail_keyphrases[T-K]', 'random_topic'])
             top_topic = top_tail_topic['top_keyphrases[T-K]'].to_list()
             tail_topic = top_tail_topic['tail_keyphrases[T-K]'].to_list()
             top_topic = top_topic[:len(topic_list)]
             tail_topic = tail_topic[:len(topic_list)]
             data_dict['top_topic'] = top_topic
-            # data_dict['tail_topic'] = tail_topic
-            
-            topic_set = set(topic_list)
-            random_topic_list = []
-            for topic in topic_list:
-                new_topic_set = topic_set.difference(set(topic))
-                new_topic_list = list(new_topic_set)
-                new_topic_list.sort()
-                random_topic = random.choice(new_topic_list)
-                random_topic_list.append(random_topic)
-            data_dict['tail_topic'] = random_topic_list
+            data_dict['tail_topic'] = tail_topic
+
+            # # random
+            # random_topic = top_tail_topic['random_topic'].to_list()
+            # random_topic_list = random_topic[:len(topic_list)]
+            # data_dict['tail_topic'] = random_topic_list
 
     data_dict = Dataset.from_dict(data_dict)
 
@@ -165,23 +160,18 @@ def load_from_macsum(args, file_path):
         # Add contrastive topic         
         if "macdial" in args.train_file:
             args.topic_file = "./data/macdial_topic.xlsx"
-            top_tail_topic = pd.read_excel(args.topic_file, usecols=['top_keyphrases[T-K]', 'tail_keyphrases[T-K]'])
+            top_tail_topic = pd.read_excel(args.topic_file, usecols=['top_keyphrases[T-K]', 'tail_keyphrases[T-K]', 'random_topic'])
             top_topic = top_tail_topic['top_keyphrases[T-K]'].to_list()
             tail_topic = top_tail_topic['tail_keyphrases[T-K]'].to_list()
             top_topic = top_topic[:len(topic_list)]
             tail_topic = tail_topic[:len(topic_list)]
             data_dict['top_topic'] = top_topic
-            # data_dict['tail_topic'] = tail_topic
+            data_dict['tail_topic'] = tail_topic
 
-            topic_set = set(topic_list)
-            random_topic_list = []
-            for topic in topic_list:
-                new_topic_set = topic_set.difference(set(topic))
-                new_topic_list = list(new_topic_set)
-                new_topic_list.sort()
-                random_topic = random.choice(new_topic_list)
-                random_topic_list.append(random_topic)
-            data_dict['tail_topic'] = random_topic_list
+            # # random
+            # random_topic = top_tail_topic['random_topic'].to_list()
+            # random_topic_list = random_topic[:len(topic_list)]
+            # data_dict['tail_topic'] = random_topic_list
 
     data_dict = Dataset.from_dict(data_dict)
 
