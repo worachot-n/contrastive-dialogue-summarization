@@ -33,7 +33,7 @@ python3 train.py \
     --cache_dir ./output/cache \
     --overwrite_cache True \
     --seed 12345 \
-    --contrastive 'top-tail' \
+    --contrastive 'top' \
     --alpha 0.5 \
     --margin 0.5 \
 
