@@ -111,12 +111,12 @@ def load_from_dialogsum(args, file_path):
             top_topic = top_topic[:len(topic_list)]
             tail_topic = tail_topic[:len(topic_list)]
             data_dict['top_topic'] = top_topic
-            data_dict['tail_topic'] = tail_topic
+            # data_dict['tail_topic'] = tail_topic
 
-            # # random
-            # random_topic = top_tail_topic['random_topic'].to_list()
-            # random_topic_list = random_topic[:len(topic_list)]
-            # data_dict['tail_topic'] = random_topic_list
+            # random
+            random_topic = top_tail_topic['random_topic'].to_list()
+            random_topic_list = random_topic[:len(topic_list)]
+            data_dict['tail_topic'] = random_topic_list
 
     data_dict = Dataset.from_dict(data_dict)
 
