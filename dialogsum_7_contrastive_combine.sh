@@ -33,9 +33,8 @@ python3 train.py \
     --cache_dir ./output/cache \
     --overwrite_cache True \
     --seed 12345 \
-    --contrastive 'top' \
+    --contrastive 'top-tail' \
     --alpha 0.5 \
-    --margin 0.5 \
 
 echo "= = = = = = = = = = = = = ="
 echo "The project is Finished..."
