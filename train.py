@@ -318,10 +318,10 @@ def main():
                         # =====================================================#
                         # differrent margin
                         loss_cs_top = cosine_embedding_loss(
-                            embeddings_for_top, pair_embeddings_top, minus_one, 0.4
+                            embeddings_for_top, pair_embeddings_top, minus_one, 0.5
                         )
                         loss_cs_tail = cosine_embedding_loss(
-                            embeddings_for_tail, pair_embeddings_tail, minus_one, 0.1
+                            embeddings_for_tail, pair_embeddings_tail, minus_one, 0.5
                         )
                         loss_cs = (loss_cs_top + loss_cs_tail) / 2
                         # =====================================================#

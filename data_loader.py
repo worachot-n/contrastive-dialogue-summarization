@@ -135,7 +135,7 @@ def load_from_macsum(args, file_path):
     data_length = len(data)
 
     id_list = [idx for idx in range(data_length)]
-    dialogue_list = [sample["article"] for sample in data]
+    dialogue_list = [sample["article"].replace("</s>", "\n") for sample in data]
 
     if "summary" in data[0]:
         summary_list = [sample["summary"] for sample in data]
@@ -144,6 +144,7 @@ def load_from_macsum(args, file_path):
         length_list = [sample["length"] for sample in data]
         extractive_list = [sample["extractiveness"] for sample in data]
         specificity_list = [sample["specificity"] for sample in data]
+        title_list = [sample["title"] for sample in data]
 
     data_dict = {
         "id": id_list,
@@ -154,7 +155,12 @@ def load_from_macsum(args, file_path):
         "length": length_list,
         "extractiveness": extractive_list,
         "specificity": specificity_list,
+        "title": title_list,
     }
+
+    for i in range(len(data_dict['topic'])):
+        if data_dict['topic'][i] == "":
+            data_dict['topic'][i] == data_dict['title'][i]
 
     if args.contrastive != "no":
         # Add contrastive topic         
@@ -166,12 +172,12 @@ def load_from_macsum(args, file_path):
             top_topic = top_topic[:len(topic_list)]
             tail_topic = tail_topic[:len(topic_list)]
             data_dict['top_topic'] = top_topic
-            data_dict['tail_topic'] = tail_topic
+            # data_dict['tail_topic'] = tail_topic
 
-            # # random
-            # random_topic = top_tail_topic['random_topic'].to_list()
-            # random_topic_list = random_topic[:len(topic_list)]
-            # data_dict['tail_topic'] = random_topic_list
+            # random
+            random_topic = top_tail_topic['random_topic'].to_list()
+            random_topic_list = random_topic[:len(topic_list)]
+            data_dict['tail_topic'] = random_topic_list
 
     data_dict = Dataset.from_dict(data_dict)
 
