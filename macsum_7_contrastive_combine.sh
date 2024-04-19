@@ -6,9 +6,9 @@ start=`date +%s`
 echo "= = = = = = = = = = = = = ="
 
 python3 train.py \
-    --len_input 'topic-length' \
+    --len_input 'topic-speaker-length' \
     --len_output 'no' \
-    --output_dir ./output/8 \
+    --output_dir ./output/7 \
     --train_file ./data/macdial_flatten/train.json \
     --validation_file ./data/macdial_flatten/val.json \
     --test_file ./data/macdial_flatten/test.json \
@@ -25,7 +25,7 @@ python3 train.py \
     --label_smoothing 0.1 \
     --length_penalty 1.0 \
     --num_train_epochs 30 \
-    --per_device_train_batch_size 6 \
+    --per_device_train_batch_size 2 \
     --gradient_accumulation_steps 32 \
     --per_device_eval_batch_size 8 \
     --per_device_test_batch_size 8 \

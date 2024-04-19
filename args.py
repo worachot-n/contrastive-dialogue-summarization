@@ -230,6 +230,7 @@ def parse_args():
             "topic",
             "length",
             "topic-length",
+            "topic-speaker",
             "topic-speaker-length",
         ),
     )

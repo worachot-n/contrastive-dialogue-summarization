@@ -62,11 +62,14 @@ def len_adjust(args, split_dict, split_type=None):
         top_topic_list = split_dict["top_topic"]
         tail_topic_list = split_dict["tail_topic"]
 
+    if args.len_input == "topic-speaker":
+        speaker_list = split_dict["speaker"]
+
     if args.len_input == "topic-speaker-length":
         speaker_list = split_dict["speaker"]
 
     if args.len_input == "no":
-        new_dialogue_list = dialogue_list
+        new_dialogue_list = dialogue_list    
 
     elif args.len_input == "topic":
         new_dialogue_list = []
@@ -88,6 +91,12 @@ def len_adjust(args, split_dict, split_type=None):
             new_dialogue = ("Topic of Summary: {}. Length of Summary: {}. Dialogue: ".format(topic, sum_len) + dialogue)
             new_dialogue_list.append(new_dialogue)
 
+    elif args.len_input == "topic-speaker":
+        new_dialogue_list = []
+        for dialogue, topic, speaker, summary in zip(dialogue_list, topic_list, speaker_list, summary_list):
+            new_dialogue = ("Topic of Summary: {}. Speaker: {}. Dialogue: ".format(topic, speaker) + dialogue)
+            new_dialogue_list.append(new_dialogue)
+
     elif args.len_input == "topic-speaker-length":
         new_dialogue_list = []
         for dialogue, topic, speaker, summary in zip(dialogue_list, topic_list, speaker_list, summary_list):
@@ -96,7 +105,17 @@ def len_adjust(args, split_dict, split_type=None):
             new_dialogue_list.append(new_dialogue)
     
     if args.contrastive != "no":
-        if args.len_input == "topic-length":
+        if args.len_input == "topic":
+            new_top_topic_list = []
+            new_tail_topic_list = []
+            for dialogue, summary, top_topic, tail_topic in zip(dialogue_list, summary_list, top_topic_list, tail_topic_list):
+                new_dialogue = ("Topic of Summary: {}. Dialogue: ".format(top_topic) + dialogue)
+                new_top_topic_list.append(new_dialogue)
+                
+                new_dialogue = ("Topic of Summary: {}. Dialogue: ".format(tail_topic) + dialogue)
+                new_tail_topic_list.append(new_dialogue)
+        
+        elif args.len_input == "topic-length":
             new_top_topic_list = []
             new_tail_topic_list = []
             for dialogue, summary, top_topic, tail_topic in zip(dialogue_list, summary_list, top_topic_list, tail_topic_list):
@@ -105,6 +124,16 @@ def len_adjust(args, split_dict, split_type=None):
                 new_top_topic_list.append(new_dialogue)
                 
                 new_dialogue = ("Topic of Summary: {}. Length of Summary: {}. Dialogue: ".format(tail_topic, sum_len) + dialogue)
+                new_tail_topic_list.append(new_dialogue)
+
+        elif args.len_input == "topic-speaker":
+            new_top_topic_list = []
+            new_tail_topic_list = []
+            for dialogue, topic, speaker, top_topic, tail_topic in zip(dialogue_list, topic_list, speaker_list, top_topic_list, tail_topic_list):
+                new_dialogue = ("Topic of Summary: {}. Speaker: {}. Dialogue: ".format(top_topic, speaker) + dialogue)
+                new_top_topic_list.append(new_dialogue)
+                
+                new_dialogue = ("Topic of Summary: {}. Speaker: {}. Dialogue: ".format(tail_topic, speaker) + dialogue)
                 new_tail_topic_list.append(new_dialogue)
                 
         elif args.len_input == "topic-speaker-length":
